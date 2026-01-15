@@ -25,11 +25,12 @@ Deployment follows "Configuration as Code" workflow to maintain the repository a
     podman build -t ceph-jenkins-controller:latest .
     ```
 2. **Launch the Controller:** Start the container with port mappings for the UI and agent communication. Ensure the persistent volume is mounted:
-    ```
+    ```sh
     podman run -d \
         --name jenkins-controller \
         -p 8080:8080 -p 50000:50000 \
         -v jenkins_home:/var/jenkins_home \
+        -e JENKINS_ADMIN_PASSWORD="<your_secure_password>" \
         ceph-jenkins-controller:latest
     ```
 3. **Bootstrap Jobs:** Upon startup, JCasC will automatically execute `seed.groovy` to create the `Seed` job.
