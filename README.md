@@ -31,6 +31,9 @@ Deployment follows "Configuration as Code" workflow to maintain the repository a
         -p 8080:8080 -p 50000:50000 \
         -v jenkins_home:/var/jenkins_home \
         -e JENKINS_ADMIN_PASSWORD="<your_secure_password>" \
+        -e JENKINS_BUILD_URL="http://<your_server_ip>:8080" \
+        -e CEPH_AGENT_01_IP="<ceph_agent_01_ip>" \
+        -e JENKINS_BUILD_URL="<jenkins_server_build_url>" \
         ceph-jenkins-controller:latest
     ```
 3. **Bootstrap Jobs:** Upon startup, JCasC will automatically execute `seed.groovy` to create the `Seed` job.
