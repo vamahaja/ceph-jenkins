@@ -3,5 +3,19 @@ jenkins:
   numExecutors: 1
   mode: EXCLUSIVE
 
+  # Security configuration
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin123}"
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+        - "Overall/Read:authenticated"
+
+# Seeder job
 jobs:
   - file: "/var/jenkins_home/seed.groovy"
