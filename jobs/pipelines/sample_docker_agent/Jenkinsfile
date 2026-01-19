@@ -1,0 +1,18 @@
+pipeline {
+    agent {
+        label "ceph-podman-agent"
+    }
+    stages {
+        stage("Environment Check") {
+            steps {
+                script {
+                    echo "Checking system identity..."
+                    sh 'whoami'
+                    
+                    echo "Checking OS version..."
+                    sh 'cat /etc/os-release'
+                }
+            }
+        }
+    }
+}

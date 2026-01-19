@@ -38,6 +38,26 @@ jenkins:
             credentialsId: "ceph-agent-ssh-key"
             sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
 
+  # Cloud agent configuration
+  clouds:
+    - docker:
+        name: "podman-cloud"
+        containerCap: 5
+        dockerApi:
+          dockerHost:
+            uri: "unix:///var/run/podman.sock"
+        templates:
+          - name: "ceph-agent"
+            labelString: "ceph-podman-agent"
+            remoteFs: "/home/jenkins"
+            mode: EXCLUSIVE
+            dockerTemplateBase:
+              image: "ceph-jenkins-agent:latest"
+              pullStrategy: PULL_NEVER
+              user: "jenkins"
+            connector:
+              attach: {}
+
 # Credentials configuration
 credentials:
   system:
