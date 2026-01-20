@@ -4,3 +4,7 @@ git
 workflow-aggregator
 matrix-auth
 ssh-slaves
+docker-plugin
+docker-workflow
+docker-java-api
+docker-commons
