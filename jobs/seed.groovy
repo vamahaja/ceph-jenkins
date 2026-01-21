@@ -13,8 +13,8 @@ job('seed-job') {
 
     // Repo and Branch parameters
     parameters {
-        stringParam('REPO_URL', 'https://github.com/vamahaja/ceph-jenkins.git', 'The Git repository containing your DSL scripts')
-        stringParam('BRANCH_NAME', 'main', 'The branch to check out and process')
+        stringParam('REPO_URL', 'https://github.com/tintumathew10/ceph-jenkins.git', 'The Git repository containing your DSL scripts')
+        stringParam('BRANCH_NAME', 'cronjob', 'The branch to check out and process')
     }
 
     // Clone user repo
@@ -34,8 +34,10 @@ job('seed-job') {
             targets 'jobs/*.groovy'
             
             // Clean up jobs that are no longer present in the DSL scripts
-            removedJobAction('DELETE')
-            removedViewAction('DELETE')
+            // removedJobAction('DELETE')
+            // removedViewAction('DELETE')
+            removedJobAction('IGNORE')
+            removedViewAction('IGNORE')
             lookupStrategy('SEED_JOB')
         }
     }
