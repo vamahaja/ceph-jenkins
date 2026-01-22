@@ -1,0 +1,99 @@
+pipeline {
+    agent {
+        label "ceph-build-centos-stream9-agent"
+    }
+
+    options {
+        timeout(time: 6, unit: "HOURS")
+        buildDiscarder(
+            logRotator(numToKeepStr: "30")
+        )
+    }
+
+    environment {
+        BUILD_BASE_DIR = "/home/jenkins/workspace"
+        CEPH_DIR = "${BUILD_BASE_DIR}/ceph"
+        TMPDIR = "${BUILD_BASE_DIR}/tmp"
+        RPMBUILD_DIR = "${BUILD_BASE_DIR}/rpmbuild"
+    }
+
+    stages {
+        stage("Clean & Update Repo") {
+            steps {
+                // Navigate to the pre-cached repo in the container
+                dir("${env.CEPH_DIR}") {
+                    script {
+                        echo "Updating existing repository and submodules..."
+                        checkout([
+                            $class: "GitSCM",
+                            branches: [[name: "${params.CEPH_BRANCH}"]],
+                            extensions: [
+                                [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: true],
+                                [$class: "CloneOption", depth: 1, shallow: true],
+                                [$class: "SubmoduleOption", 
+                                    disableSubmodules: false, 
+                                    parentCredentials: true, 
+                                    recursiveSubmodules: true, 
+                                    shallow: true]
+                            ],
+                            userRemoteConfigs: [[url: "${params.CEPH_REPO}"]]
+                        ])
+                        sh "git log -1 --oneline"
+                    }
+                }
+            }
+        }
+
+        stage("Refresh Dependencies") {
+            steps {
+                dir("${env.CEPH_DIR}") {
+                    // catches new deps in the updated code
+                    sh "sudo ./install-deps.sh"
+                }
+            }
+        }
+
+        stage("Build RPMs") {
+            steps {
+                dir("${env.CEPH_DIR}") {
+                    sh '''
+                        # Prepare source tarball
+                        ./make-dist
+
+                        # Move tarball to the pre-configured RPM tree
+                        TARBALL=$(ls -1 ceph-*.tar.bz2 | head -1)
+                        cp ${TARBALL} ${RPMBUILD_DIR}/SOURCES/
+
+                        # Generate and build from SRPM
+                        ./make-srpm.sh
+                        SRPM=$(ls -1 ${RPMBUILD_DIR}/SRPMS/*.src.rpm | head -1)
+
+                        echo "Building with -j4 to avoid OOM (15GB RAM limit)"
+                        rpmbuild --rebuild $SRPM \
+                            --define "_topdir ${RPMBUILD_DIR}" \
+                            --define "_tmppath ${TMPDIR}" \
+                            --define "_smp_mflags -j4" \
+                            --define "debug_package %{nil}" \
+                            --without ceph_test_package \
+                            --without make_check
+                    '''
+                }
+            }
+        }
+
+        stage("Archive & Register") {
+            steps {
+                // Collect RPMs for archiving
+                sh "mkdir -p ${WORKSPACE}/rpms && cp ${RPMBUILD_DIR}/RPMS/*/*.rpm ${WORKSPACE}/rpms/"
+                archiveArtifacts artifacts: "rpms/*.rpm", allowEmptyArchive: false
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean the workspace to free up the 200GB data volume
+            cleanWs(deleteDirs: true)
+        }
+    }
+}

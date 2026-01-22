@@ -8,3 +8,4 @@ docker-plugin
 docker-workflow
 docker-java-api
 docker-commons
+ws-cleanup

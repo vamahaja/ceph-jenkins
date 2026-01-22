@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label "ceph-build-agent"
+        label "ceph-build-centos-stream9-agent"
     }
     stages {
         stage("Environment Check") {

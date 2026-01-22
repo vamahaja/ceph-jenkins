@@ -1,0 +1,83 @@
+# Base image for CentOS Stream 9 Jenkins build agent for Ceph
+FROM quay.io/centos/centos:stream9
+
+# Build arguments for user mapping
+ARG AGENT_UID=1000
+ARG AGENT_GID=1001
+ARG AGENT_USER=jenkins
+ARG AGENT_GROUP=jenkins-bridge
+
+# Build arguments for Ceph repository
+ARG CEPH_REPO=https://github.com/ceph/ceph.git
+ARG CEPH_BRANCH=main
+
+# Install Java 17 (required by Jenkins agent)
+RUN yum install -y java-17-openjdk-headless
+
+# Install tools and setup RPM tree as the new jenkins user
+RUN yum install -y \
+        git \
+        sudo \
+        which \
+        rpm-build \
+        rpmdevtools \
+        wget \
+        epel-release \
+        yum-utils
+
+# Enable CRB/PowerTools repository for additional packages
+RUN dnf config-manager --set-enabled crb || \
+    dnf config-manager --set-enabled powertools
+
+# Install Ceph specific dependencies
+RUN yum install -y \
+        gcc-toolset-13 \
+        gcc-toolset-13-gcc-plugin-annobin \
+        gcc-toolset-13-libasan-devel \
+        gcc-toolset-13-libubsan-devel \
+        cryptopp-devel \
+        gnutls-devel \
+        hwloc-devel \
+        libasan \
+        libubsan \
+        libpciaccess-devel \
+        lksctp-tools-devel \
+        ragel
+
+# Disable IPv6 via configuration
+RUN echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
+
+# Create agent user inside container matching host's UID/GID
+RUN groupadd -g ${AGENT_GID} ${AGENT_GROUP} && \
+    useradd -l -u ${AGENT_UID} -g ${AGENT_GROUP} -m -s /bin/bash ${AGENT_USER} && \
+    echo "${AGENT_USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Set Up the Build Workspace
+RUN mkdir -p /home/${AGENT_USER}/workspace && \
+    mkdir -p /home/${AGENT_USER}/workspace/tmp && \
+    mkdir -p /home/${AGENT_USER}/workspace/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+# Set up environment for the build
+ENV TMPDIR=/home/${AGENT_USER}/workspace/tmp \
+    NODE_OPTIONS="--dns-result-order=ipv4first" \
+    _smp_mflags="-j4"
+
+# Clone Ceph repository and submodules
+WORKDIR /home/${AGENT_USER}/workspace
+RUN git clone --depth 1 --branch ${CEPH_BRANCH} ${CEPH_REPO} ceph
+RUN cd ceph && git submodule update --init --recursive && ./install-deps.sh
+
+# Set ownership of the home directory to the agent user
+RUN chown -R ${AGENT_USER}:${AGENT_GROUP} /home/${AGENT_USER}
+
+# Switch to the jenkins user for all subsequent operations
+WORKDIR /home/${AGENT_USER}
+USER ${AGENT_USER}
+
+# Build job description labels
+LABEL description="Ceph Build Jenkins Agent" \
+      base_image="centos:stream9" \
+      purpose="Ceph builds processing"
+
+# Default command to keep the container running
+CMD ["/bin/bash"]
