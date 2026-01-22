@@ -47,15 +47,20 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
-          - name: "ceph-build-agent"
-            labelString: "ceph-build-agent"
+          - name: "ceph-build-centos9-agent"
+            labelString: "ceph-build-centos9-agent"
             remoteFs: "/home/jenkins"
             mode: EXCLUSIVE
             pullStrategy: PULL_NEVER
+            instanceCapStr: "4"
             dockerTemplateBase:
-              image: "ceph-jenkins-build-agent:latest"
-              dockerCommand: "sleep infinity"
+              image: "ceph-jenkins-centos9-agent:latest"
               tty: true
+              cpuShares: 4096
+              memoryLimit: 16384
+              memorySwap: -1
+              environment:
+                - "ALLOCATED_CPUS=4"
             connector:
               attach:
                 user: "jenkins"
