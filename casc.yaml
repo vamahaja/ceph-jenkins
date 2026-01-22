@@ -56,6 +56,18 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
+          - name: "ceph-build-centos-stream9-agent"
+            labelString: "ceph-build-centos-stream9-agent"
+            remoteFs: "/home/jenkins"
+            mode: EXCLUSIVE
+            pullStrategy: PULL_NEVER
+            dockerTemplateBase:
+              image: "ceph-jenkins-build-centos-stream9-agent:latest"
+              tty: true
+            connector:
+              attach:
+                user: "jenkins"
+
 
 security:
   globalJobDslSecurityConfiguration:
@@ -67,6 +79,10 @@ security:
       - "method javaposse.jobdsl.dsl.DslFactory job java.lang.String"
       - "method javaposse.jobdsl.dsl.Job scm(groovy.lang.Closure)"
 
+# AnsiColor configuration
+unclassified:
+  ansiColorBuildWrapper:
+    globalColorMapName: "xterm"
 
 # Seeder job
 jobs:
