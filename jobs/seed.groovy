@@ -33,9 +33,9 @@ job('seed-job') {
             // Targets the DSL files from `jobs` directory in the repo
             targets 'jobs/*.groovy'
             
-            // Clean up jobs that are no longer present in the DSL scripts
-            removedJobAction('DELETE')
-            removedViewAction('DELETE')
+            // Ignore existing jobs
+            removedJobAction('IGNORE')
+            removedViewAction('IGNORE')
             lookupStrategy('SEED_JOB')
         }
     }
