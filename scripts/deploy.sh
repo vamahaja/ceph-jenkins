@@ -66,7 +66,17 @@ fi
 echo "Launching Jenkins Controller..."
 podman run -d \
     --name jenkins-controller \
+    --cpus 4 \
+    --memory 12g \
+    --memory-reservation 4g \
+    --oom-score-adj -500 \
     -p 8080:8080 -p 50000:50000 \
+    -e JAVA_OPTS="-Xms4g -Xmx8g \
+       -XX:+UseG1GC \
+       -XX:+ExplicitGCInvokesConcurrent \
+       -Djenkins.install.runSetupWizard=false \
+       -Djava.awt.headless=true \
+       -Dcasc.jenkins.config=/var/jenkins_home/casc_configs/" \
     -v jenkins_home:/var/jenkins_home \
     -v $(pwd)/casc.yaml:/var/jenkins_home/casc_configs/01-casc.yaml:z \
     -v $(pwd)/properties.yaml:/var/jenkins_home/casc_configs/02-properties.yaml:z \
