@@ -27,7 +27,7 @@ podman build \
     --build-arg AGENT_GID=$SOCKET_GID \
     --build-arg AGENT_GROUP=$HOST_GROUP \
     --build-arg AGENT_UID=$HOST_UID \
-    -t ceph-jenkins-build-agent ./containers/agents/build
+    -t ceph-jenkins-centos9-agent ./containers/agents/build/centos-9
 
 # --- Cleanup Existing Container ---
 if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
@@ -42,7 +42,7 @@ echo "Verifying built images..."
 REQUIRED_IMAGES=(
     "ceph-jenkins-controller:latest"
     "ceph-jenkins-seed-agent:latest"
-    "ceph-jenkins-build-agent:latest"
+    "ceph-jenkins-centos9-agent:latest"
 )
 MISSING=()
 
