@@ -37,10 +37,13 @@ jenkins:
             remoteFs: "/home/jenkins"
             mode: EXCLUSIVE
             pullStrategy: PULL_NEVER
+            instanceCapStr: "1"
             dockerTemplateBase:
               image: "ceph-jenkins-seed-agent:latest"
-              dockerCommand: "sleep infinity"
               tty: true
+              cpuShares: 256
+              memorySwap: 256
+              memoryLimit: 256
             connector:
               attach:
                 user: "jenkins"
