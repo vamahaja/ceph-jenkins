@@ -69,7 +69,7 @@ security:
 
 # Console color configuration
 unclassified:
-  ansiColorConfig:
+  ansiColorBuildWrapper:
     globalColorMapName: "xterm"
 
 # Seeder job
