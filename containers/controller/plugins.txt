@@ -14,5 +14,6 @@ matrix-auth
 pipeline-utility-steps
 rebuild
 ssh-slaves
+timestamper
 ws-cleanup
 workflow-aggregator
