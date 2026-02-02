@@ -67,6 +67,10 @@ security:
       - "method javaposse.jobdsl.dsl.DslFactory job java.lang.String"
       - "method javaposse.jobdsl.dsl.Job scm(groovy.lang.Closure)"
 
+# Console color configuration
+unclassified:
+  ansiColorConfig:
+    globalColorMapName: "xterm"
 
 # Seeder job
 jobs:
