@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Set strict mode
+set -ex
+
+# Create RPM and release build area
+mkdir -p "${RPM_BUILDAREA}"/{SOURCES,SRPMS,SPECS,RPMS,BUILD}
+mkdir -p "${RELEASE_BUILDAREA}"/{SOURCES,SPECS,RPMS,BUILD}
+
+# Create the dist/version file required by setup_rpm/build_rpm
+vers="${BASE_VERSION}.${SHORT_SHA}"
+tarball="ceph-${vers}"
+
+# Generates a spec from 'ceph.spec.in' to ensure dependencies match the version
+if [ -f "ceph.spec.in" ]; then
+    sed -e "s/@TARBALL_BASENAME@/${tarball}/g" \
+        -e "s/@PROJECT_VERSION@/${vers}/g" \
+        -e "s/@RPM_RELEASE@/${vers}/g" \
+        < ceph.spec.in > "${RPM_BUILDAREA}/SPECS/ceph.spec"
+    sudo dnf builddep -y --setopt=*.skip_if_unavailable=true "${RPM_BUILDAREA}/SPECS/ceph.spec"
+else
+    echo "ERROR: Run this script from the root of your Ceph source tree."
+    exit 1
+fi
+
+# Modify spec file for development naming/versioning
+sed -i "s/^%setup.*/%setup -q -n %{name}-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+sed -i "s/^%autosetup.*/%autosetup -p1 -n %{name}-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+sed -i "s/%{name}-%{version}/ceph-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+
+# Add git version
+echo "${SHA1}" > src/.git_version
+echo "${tarball}" >> src/.git_version
+
+# Create Source Distribution
+echo "Staging source for tarball..."
+STAGING_DIR=$(mktemp -d)
+
+# Use rsync -l to preserve symlinks and avoid the slow -h overhead
+rsync -a --exclude=".git" --exclude="rpm" ./ "${STAGING_DIR}/${tarball}/"
+
+# We now tar the staged directory directly
+echo "Creating tarball from staged directory..."
+tar -cjf "${RPM_BUILDAREA}/SOURCES/${tarball}.tar.bz2" -C "${STAGING_DIR}" "${tarball}"
+
+# Get number of CPUs to use for build
+CPUS=${ALLOCATED_CPUS:-1}
+
+# Start the compilation and packaging
+cd "${RPM_BUILDAREA}/SPECS"
+rpmbuild -ba \
+    --define "_topdir ${RPM_BUILDAREA}" \
+    --define "_smp_mflags -j${CPUS}" \
+    --define "debug_package %{nil}" \
+    --define "_lto_cflags %{nil}" \
+    ${RPM_BUILD_OPTS:+${RPM_BUILD_OPTS}} \
+    "${RPM_BUILDAREA}/SPECS/ceph.spec"
+
+# Generate the .repo file
+cat <<EOF > ${RELEASE_BUILDAREA}/SOURCES/ceph.repo
+[Ceph]
+name=Ceph packages for \$basearch
+baseurl=${REPO_URL}/\$basearch
+enabled=1
+gpgcheck=0
+type=rpm-md
+
+[Ceph-noarch]
+name=Ceph noarch packages
+baseurl=${REPO_URL}/noarch
+enabled=1
+gpgcheck=0
+type=rpm-md
+EOF
+
+# Generate the spec for the release package
+cat <<EOF > ${RELEASE_BUILDAREA}/SPECS/ceph-release.spec
+Name:           ceph-release
+Version:        1
+Release:        0%{?dist}
+Summary:        Ceph Development repository configuration
+License:        GPLv2
+URL:            ${REPO_URL}
+Source0:        ceph.repo
+BuildArch:      noarch
+
+%description
+This package contains the yum configuration for a specific Ceph development build.
+
+%prep
+%setup -q -c -T
+install -pm 644 %{SOURCE0} .
+
+%install
+install -dm 755 %{buildroot}/etc/yum.repos.d
+install -pm 644 %{SOURCE0} %{buildroot}/etc/yum.repos.d
+
+%files
+/etc/yum.repos.d/ceph.repo
+EOF
+
+# Build the release RPM
+cd "${RELEASE_BUILDAREA}/SPECS"
+rpmbuild -bb \
+    --define "_topdir ${RELEASE_BUILDAREA}" \
+    "${RELEASE_BUILDAREA}/SPECS/ceph-release.spec"
+
+# Extract standalone cephadm
+cd "${WORKSPACE}"
+RPM_PATH=$(find "${RELEASE_BUILDAREA}/RPMS" -name "cephadm-*.rpm" | head -n 1)
+if [ -f "${RPM_PATH}" ]; then
+    rpm2cpio "${RPM_PATH}" | cpio -i --to-stdout *sbin/cephadm > cephadm
+    echo "Extracted cephadm binary to ${WORKSPACE}/cephadm"
+fi
+
+echo "RPM Build and cephadm extraction completed."
