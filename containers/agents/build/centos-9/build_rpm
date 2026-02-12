@@ -8,14 +8,13 @@ mkdir -p "${RPM_BUILDAREA}"/{SOURCES,SRPMS,SPECS,RPMS,BUILD}
 mkdir -p "${RELEASE_BUILDAREA}"/{SOURCES,SPECS,RPMS,BUILD}
 
 # Create the dist/version file required by setup_rpm/build_rpm
-vers="${BASE_VERSION}.${SHORT_SHA}"
-tarball="ceph-${vers}"
+tarball="ceph-${VERSION}"
 
 # Generates a spec from 'ceph.spec.in' to ensure dependencies match the version
 if [ -f "ceph.spec.in" ]; then
     sed -e "s/@TARBALL_BASENAME@/${tarball}/g" \
-        -e "s/@PROJECT_VERSION@/${vers}/g" \
-        -e "s/@RPM_RELEASE@/${vers}/g" \
+        -e "s/@PROJECT_VERSION@/${VERSION}/g" \
+        -e "s/@RPM_RELEASE@/${VERSION}/g" \
         < ceph.spec.in > "${RPM_BUILDAREA}/SPECS/ceph.spec"
     sudo dnf builddep -y --setopt=*.skip_if_unavailable=true "${RPM_BUILDAREA}/SPECS/ceph.spec"
 else
@@ -24,9 +23,9 @@ else
 fi
 
 # Modify spec file for development naming/versioning
-sed -i "s/^%setup.*/%setup -q -n %{name}-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
-sed -i "s/^%autosetup.*/%autosetup -p1 -n %{name}-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
-sed -i "s/%{name}-%{version}/ceph-${vers}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+sed -i "s/^%setup.*/%setup -q -n %{name}-${VERSION}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+sed -i "s/^%autosetup.*/%autosetup -p1 -n %{name}-${VERSION}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
+sed -i "s/%{name}-%{version}/${tarball}/" "${RPM_BUILDAREA}/SPECS/ceph.spec"
 
 # Add git version
 echo "${SHA1}" > src/.git_version

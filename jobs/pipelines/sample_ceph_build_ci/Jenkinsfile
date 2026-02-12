@@ -24,12 +24,11 @@ pipeline {
         REPO_URL="https://shaman.ceph.com/r/ceph"
 
         // Set user build parameters
-        BASE_VERSION="${params.BASE_VERSION}"
         RPM_BUILD_OPTS="${params.RPM_BUILD_OPTS}"
 
         // Set up a build paths for artifacts
-        RPM_BUILDAREA="${WORKSPACE}/rpm/${params.DIST}"
-        RELEASE_BUILDAREA="${WORKSPACE}/release/${params.DIST}"
+        RPM_BUILDAREA="${WORKSPACE}/rpm"
+        RELEASE_BUILDAREA="${WORKSPACE}/release"
         CEPH_DIR="${WORKSPACE}/ceph"
     }
 
@@ -82,15 +81,26 @@ pipeline {
                             script: 'git rev-parse HEAD 2>/dev/null || echo "unknown"',
                             returnStdout: true
                         ).trim()
-                        env.SHORT_SHA = sh(
-                            script: 'git rev-parse --short HEAD 2>/dev/null || echo "unknown"',
+                        env.VERSION = sh(
+                            script: 'git describe --abbrev=8 --match 'v*' | sed s/^v//',
                             returnStdout: true
                         ).trim()
 
+                        // Set distro version based on distro
+                        if (params.DISTRO == "centos") {
+                            env.DISTRO_VERSION = "9"
+                        }
+
                         // Set repo url for shaman
-                        env.REPO_URL = "${REPO_URL}/${params.CEPH_BRANCH}/${SHA1}/${params.DISTRO}/${params.RELEASE}/flavors/${params.FLAVOR}"
+                        env.REPO_URL = "${REPO_URL}/${params.CEPH_BRANCH}/${SHA1}/${params.DISTRO}/${DISTRO_VERSION}/flavors/${params.FLAVOR}"
                     }
                 }
+            }
+        }
+
+        stage("Build Binary") {
+            steps {
+                echo "Running the Ceph binary build script ..."
             }
         }
 
