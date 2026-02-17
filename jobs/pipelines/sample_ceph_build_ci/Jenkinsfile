@@ -24,13 +24,13 @@ pipeline {
         REPO_URL="https://shaman.ceph.com/r/ceph"
 
         // Set user build parameters
-        BASE_VERSION="${params.BASE_VERSION}"
         RPM_BUILD_OPTS="${params.RPM_BUILD_OPTS}"
 
         // Set up a build paths for artifacts
-        RPM_BUILDAREA="${WORKSPACE}/rpm/${params.DIST}"
-        RELEASE_BUILDAREA="${WORKSPACE}/release/${params.DIST}"
+        RPM_BUILDAREA="${WORKSPACE}/rpm"
+        RELEASE_BUILDAREA="${WORKSPACE}/release"
         CEPH_DIR="${WORKSPACE}/ceph"
+        BUILD_BINARY="${WORKSPACE}/jobs/pipelines/sample_ceph_build_ci/build_binary.sh"
     }
 
     stages {
@@ -41,7 +41,7 @@ pipeline {
             }
         }
 
-        stage("Set Ceph Repository") {
+        stage("Checkout Ceph Repository") {
             steps {
                 echo "Checking out Ceph source code ..."
 
@@ -49,12 +49,16 @@ pipeline {
                 dir("${CEPH_DIR}") {
                     script {
                         echo "Updating existing repository and submodules ..."
+
+                        // Checkout is blocking: clone + submodules complete before next step
                         checkout([
                             $class: "GitSCM",
                             branches: [[name: "${params.CEPH_BRANCH}"]],
                             extensions: [
-                                [$class: "CleanBeforeCheckout", deleteUntrackedNestedRepositories: true],
-                                [$class: "CloneOption", depth: 1, shallow: true],
+                                [$class: "CleanBeforeCheckout",
+                                    deleteUntrackedNestedRepositories: true],
+                                [$class: "CloneOption", depth: 1, shallow: true,
+                                    noTags: false],
                                 [$class: "SubmoduleOption",
                                     disableSubmodules: false,
                                     parentCredentials: true,
@@ -64,31 +68,71 @@ pipeline {
                             ],
                             userRemoteConfigs: [[url: "${params.CEPH_REPO}"]]
                         ])
+
+                        // Ensure submodules are fully checked out before proceeding
+                        sh(
+                            script: "git submodule status --recursive",
+                            label: "Verify submodules"
+                        )
+
+                        // fetch all tags
+                        sh(
+                            script: "git fetch --tags --unshallow || git fetch --tags",
+                            label: "Fetch all tags"
+                        )
+
+                        // Verify commit hash and version
+                        env.SHA1 = sh(
+                            script: "git rev-parse HEAD 2>/dev/null || echo \"unknown\"",
+                            returnStdout: true
+                        ).trim()
+                        env.VERSION = sh(
+                            script: "git describe --abbrev=8 --match \"v*\" --always " +
+                                "| sed \"s/^v//\"",
+                            returnStdout: true
+                        ).trim()
+
+                        // Replace last '-' with '.' in VERSION
+                        env.VERSION = sh(
+                            script: "echo $VERSION | sed \"s/-/./2\"", returnStdout: true
+                        ).trim()
                     }
                 }
             }
         }
 
-        stage("Set Environment") {
+        stage("Prepare Ceph Build Environment") {
             steps {
                 echo "Preparing the Ceph build environment ..."
 
                 // Run setup_rpm script to prepare the build environment
                 dir("${CEPH_DIR}") {
                     script {
-                        // Verify commit and get sha and short sha from git
-                        sh 'git log -1 --oneline'
-                        env.SHA1 = sh(
-                            script: 'git rev-parse HEAD 2>/dev/null || echo "unknown"',
-                            returnStdout: true
-                        ).trim()
-                        env.SHORT_SHA = sh(
-                            script: 'git rev-parse --short HEAD 2>/dev/null || echo "unknown"',
-                            returnStdout: true
-                        ).trim()
+                        // Set distro version based on distro
+                        if ("centos9" in params.DISTRO) {
+                            env.DISTRO_VERSION = "9"
+                            env.BUILD_RPM = "${WORKSPACE}/containers/agents/build/" +
+                                "centos-9/build_rpm"
+                        } else {
+                            error "Unsupported distro: ${params.DISTRO}"
+                        }
 
                         // Set repo url for shaman
-                        env.REPO_URL = "${REPO_URL}/${params.CEPH_BRANCH}/${SHA1}/${params.DISTRO}/${params.RELEASE}/flavors/${params.FLAVOR}"
+                        env.REPO_URL = "${REPO_URL}/${params.CEPH_BRANCH}/${SHA1}/" +
+                            "${params.DISTRO}/${DISTRO_VERSION}/flavors/${params.FLAVOR}"
+                    }
+                }
+            }
+        }
+
+        stage("Build Binary") {
+            steps {
+                echo "Running the Ceph binary build script ..."
+
+                dir("${CEPH_DIR}") {
+                    script {
+                        // Run build_binary script
+                        sh "chmod +x ${BUILD_BINARY} && ${BUILD_BINARY}"
                     }
                 }
             }
@@ -98,11 +142,10 @@ pipeline {
             steps {
                 echo "Running the Ceph RPM build script ..."
 
-                // Run bash script you mentioned earlier
+                // Run build_rpm script
                 dir("${CEPH_DIR}") {
                     script {
-                        sh "chmod +x ${WORKSPACE}/containers/agents/build/centos-9/build_rpm"
-                        sh "source ${WORKSPACE}/containers/agents/build/centos-9/build_rpm"
+                        sh "chmod +x ${BUILD_RPM} && ${BUILD_RPM}"
                     }
                 }
             }
@@ -114,9 +157,12 @@ pipeline {
             echo "RPMs built successfully! Archiving ..."
             script {
                 // Save the RPMs
-                sh "mkdir -p artifacts"
-                sh "find ${RPM_BUILDAREA} -name \"*.rpm\" -exec cp {} artifacts/ \\;"
-                archiveArtifacts artifacts: "artifacts/*.rpm", allowEmptyArchive: false
+                dir("artifacts") {
+                    script {
+                        sh "find ${RPM_BUILDAREA} -name \"*.rpm\" -exec cp {} . \\;"
+                        archiveArtifacts artifacts: "*.rpm", allowEmptyArchive: false
+                    }
+                }
             }
         }
 
