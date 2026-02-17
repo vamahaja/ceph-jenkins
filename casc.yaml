@@ -80,6 +80,13 @@ unclassified:
   ansiColorBuildWrapper:
     globalColorMapName: "xterm"
 
+  appearance:
+    pipelineGraphView:
+      showPipelineGraph: true
+      showPipelineStages: true
+      showStageDurations: true
+      showStageNames: true
+
 # Seeder job
 jobs:
   - file: "/var/jenkins_home/seed.groovy"
