@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        node {
-            label "ceph-build-centos9-agent"
-        }
-    }
+    agent none
 
     options {
         // Keep the last 20 builds
@@ -20,6 +16,9 @@ pipeline {
     }
 
     environment {
+        // Shared workspace path for all stages (mounted volume, per-run directory)
+        SHARED_WS = "/shared-workspace/${JOB_NAME}/${BUILD_NUMBER}"
+
         // Environment & Variable Setup
         REPO_URL="https://shaman.ceph.com/r/ceph"
 
@@ -35,6 +34,12 @@ pipeline {
 
     stages {
         stage("Checkout Pipeline Code") {
+            agent {
+                node {
+                    label "ceph-build-centos9-agent"
+                    customWorkspace "${env.SHARED_WS}"
+                }
+            }
             steps {
                 // Pull the Jenkinsfile repository
                 checkout scm
@@ -42,6 +47,12 @@ pipeline {
         }
 
         stage("Checkout Ceph Repository") {
+            agent {
+                node {
+                    label "ceph-build-centos9-agent"
+                    customWorkspace "${env.SHARED_WS}"
+                }
+            }
             steps {
                 echo "Checking out Ceph source code ..."
 
@@ -102,6 +113,12 @@ pipeline {
         }
 
         stage("Prepare Ceph Build Environment") {
+            agent {
+                node {
+                    label "ceph-build-centos9-agent"
+                    customWorkspace "${env.SHARED_WS}"
+                }
+            }
             steps {
                 echo "Preparing the Ceph build environment ..."
 
@@ -117,6 +134,13 @@ pipeline {
                             error "Unsupported distro: ${params.DISTRO}"
                         }
 
+                        // Set agent label for Build RPMs stage (DISTRO & ARCH specific)
+                        if ("centos9" in params.DISTRO && params.ARCH == "x86_64") {
+                            env.RPM_AGENT_LABEL = "ceph-build-centos9-agent"
+                        } else {
+                            error "Unsupported DISTRO/ARCH: ${params.DISTRO}/${params.ARCH}"
+                        }
+
                         // Set repo url for shaman
                         env.REPO_URL = "${REPO_URL}/${params.CEPH_BRANCH}/${SHA1}/" +
                             "${params.DISTRO}/${DISTRO_VERSION}/flavors/${params.FLAVOR}"
@@ -126,6 +150,12 @@ pipeline {
         }
 
         stage("Build Binary") {
+            agent {
+                node {
+                    label "ceph-build-centos9-agent"
+                    customWorkspace "${env.SHARED_WS}"
+                }
+            }
             steps {
                 echo "Running the Ceph binary build script ..."
 
@@ -139,6 +169,12 @@ pipeline {
         }
 
         stage("Build RPMs") {
+            agent {
+                node {
+                    label "${env.RPM_AGENT_LABEL}"
+                    customWorkspace "${env.SHARED_WS}"
+                }
+            }
             steps {
                 echo "Running the Ceph RPM build script ..."
 
@@ -154,22 +190,16 @@ pipeline {
 
     post {
         success {
-            echo "RPMs built successfully! Archiving ..."
-            script {
-                // Save the RPMs
-                dir("artifacts") {
-                    script {
-                        // Create the directories
+            node("ceph-build-centos9-agent") {
+                ws("${env.SHARED_WS}") {
+                    echo "RPMs built successfully! Archiving ..."
+                    dir("artifacts") {
                         sh "mkdir -p x86_64 noarch SRPMS"
-
-                        // Copy the RPMs
                         sh """
-                           find ${RPM_BUILDAREA} -name "*x86_64.rpm" -exec cp {} x86_64/ \\;
-                           find ${RPM_BUILDAREA} -name "*noarch.rpm" -exec cp {} noarch/ \\;
-                           find ${RPM_BUILDAREA} -name "*src.rpm" -exec cp {} SRPMS/ \\;
+                           find ${env.RPM_BUILDAREA} -name \"*x86_64.rpm\" -exec cp {} x86_64/ \\;
+                           find ${env.RPM_BUILDAREA} -name \"*noarch.rpm\" -exec cp {} noarch/ \\;
+                           find ${env.RPM_BUILDAREA} -name \"*src.rpm\" -exec cp {} SRPMS/ \\;
                         """
-
-                        // Archive the RPMs
                         archiveArtifacts(
                             artifacts: "x86_64/*.rpm noarch/*.rpm SRPMS/*.rpm",
                             allowEmptyArchive: false
@@ -181,6 +211,12 @@ pipeline {
 
         failure {
             echo "Build failed. Check the logs for GCC or CMake errors."
+        }
+
+        cleanup {
+            node("ceph-build-centos9-agent") {
+                sh "rm -rf ${env.SHARED_WS}"
+            }
         }
     }
 }

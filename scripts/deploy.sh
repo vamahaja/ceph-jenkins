@@ -29,6 +29,10 @@ podman build \
     --build-arg AGENT_UID=$HOST_UID \
     -t ceph-jenkins-centos9-agent ./containers/agents/build/centos-9
 
+# --- Ensure shared workspaces volume exists (for multi-agent pipeline) ---
+echo "Ensuring shared workspaces volume exists..."
+podman volume create jenkins_shared_workspaces 2>/dev/null || true
+
 # --- Cleanup Existing Container ---
 if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
     echo "Stopping and removing existing jenkins-controller..."
