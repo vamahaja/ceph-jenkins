@@ -171,7 +171,7 @@ pipeline {
 
                         // Archive the RPMs
                         archiveArtifacts(
-                            artifacts: "x86_64/*.rpm noarch/*.rpm SRPMS/*.rpm",
+                            artifacts: "x86_64/*.rpm,noarch/*.rpm,SRPMS/*.rpm",
                             allowEmptyArchive: false
                         )
                     }
