@@ -159,8 +159,21 @@ pipeline {
                 // Save the RPMs
                 dir("artifacts") {
                     script {
-                        sh "find ${RPM_BUILDAREA} -name \"*.rpm\" -exec cp {} . \\;"
-                        archiveArtifacts artifacts: "*.rpm", allowEmptyArchive: false
+                        // Create the directories
+                        sh "mkdir -p x86_64 noarch SRPMS"
+
+                        // Copy the RPMs
+                        sh """
+                           find ${RPM_BUILDAREA} -name "*x86_64.rpm" -exec cp {} x86_64/ \\;
+                           find ${RPM_BUILDAREA} -name "*noarch.rpm" -exec cp {} noarch/ \\;
+                           find ${RPM_BUILDAREA} -name "*src.rpm" -exec cp {} SRPMS/ \\;
+                        """
+
+                        // Archive the RPMs
+                        archiveArtifacts(
+                            artifacts: "x86_64/*.rpm noarch/*.rpm SRPMS/*.rpm",
+                            allowEmptyArchive: false
+                        )
                     }
                 }
             }
