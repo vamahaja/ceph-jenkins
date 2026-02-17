@@ -11,6 +11,8 @@ git
 groovy
 job-dsl
 matrix-auth
+pipeline-graph-view
+pipeline-stage-view
 pipeline-utility-steps
 rebuild
 ssh-slaves
