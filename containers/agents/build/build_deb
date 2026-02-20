@@ -1,0 +1,70 @@
+#!/bin/bash
+
+set -ex
+
+# Create DEB build area
+mkdir -p "${DEB_BUILDAREA}"/{source,binary}
+mkdir -p "${RELEASE_BUILDAREA}"
+
+# Extract the source tarball into the build area
+tar -xjf "dist/ceph-${VERSION}.tar.bz2" -C "${DEB_BUILDAREA}/source"
+cd "${DEB_BUILDAREA}/source/ceph-${VERSION}"
+
+# Update the changelog with the correct version and distribution
+sudo DEBIAN_FRONTEND=noninteractive apt-get update
+DEBEMAIL="contact@ceph.com" DEBFULLNAME="Ceph Release Team" dch \
+    --newversion "${VERSION}" \
+    --distribution "${DIST}" \
+    --force-distribution \
+    "Automated build for ${VERSION}"
+
+# Install build dependencies using equivs/mk-build-deps
+sudo DEBIAN_FRONTEND=noninteractive mk-build-deps --install --remove \
+    --tool "apt-get -y --no-install-recommends" \
+    debian/control
+
+# Get number of CPUs to use for build
+CPUS=${ALLOCATED_CPUS:-1}
+
+# Build the binary and source .deb packages
+DEB_BUILD_OPTIONS="parallel=${CPUS} nocheck" dpkg-buildpackage \
+    -us -uc \
+    -b \
+    -j${CPUS} \
+    ${DEB_BUILD_OPTS:+${DEB_BUILD_OPTS}}
+
+# Collect all built .deb and .changes files
+mv "${DEB_BUILDAREA}/source"/*.deb "${DEB_BUILDAREA}/binary/" 2>/dev/null || true
+mv "${DEB_BUILDAREA}/source"/*.changes "${DEB_BUILDAREA}/binary/" 2>/dev/null || true
+mv "${DEB_BUILDAREA}/source"/*.buildinfo "${DEB_BUILDAREA}/binary/" 2>/dev/null || true
+
+# Set up a local APT repository structure for the built packages
+REPO_DIR="${RELEASE_BUILDAREA}/repo"
+mkdir -p "${REPO_DIR}/conf"
+
+cat <<EOF > "${REPO_DIR}/conf/distributions"
+Origin: Ceph
+Label: Ceph Dev
+Codename: ${DIST}
+Architectures: amd64 source
+Components: main
+Description: Ceph development packages for ${DIST}
+EOF
+
+# Import all .deb files into the repository
+for deb in "${DEB_BUILDAREA}/binary"/*.deb; do
+    if [ -f "${deb}" ]; then
+        reprepro -b "${REPO_DIR}" includedeb "${DIST}" "${deb}"
+    fi
+done
+
+# Extract standalone cephadm
+cd "${WORKSPACE}"
+CEPHADM_DEB=$(find "${DEB_BUILDAREA}/binary" -name "cephadm_*.deb" | head -n 1)
+if [ -f "${CEPHADM_DEB}" ]; then
+    dpkg-deb --fsys-tarfile "${CEPHADM_DEB}" | tar -xOf - ./usr/sbin/cephadm > cephadm
+    chmod +x cephadm
+    echo "Extracted cephadm binary to ${WORKSPACE}/cephadm"
+fi
+
+echo "DEB Build and cephadm extraction completed."
