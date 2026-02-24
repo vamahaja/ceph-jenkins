@@ -22,12 +22,24 @@ podman build \
     --build-arg AGENT_UID=$HOST_UID \
     -t ceph-jenkins-seed-agent ./containers/agents/seed
 
-echo "Building Build Agent (with dynamic permissions)..."
+echo "Building CentOS 9 Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg AGENT_GID=$SOCKET_GID \
     --build-arg AGENT_GROUP=$HOST_GROUP \
     --build-arg AGENT_UID=$HOST_UID \
     -t ceph-jenkins-centos9-agent ./containers/agents/build/centos-9
+
+echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
+podman build \
+    --build-arg USER_ID=$HOST_UID \
+    --build-arg GROUP_ID=$SOCKET_GID \
+    -t ceph-jenkins-ubuntu-noble-agent ./containers/agents/build/ubuntu/noble
+
+echo "Building Ubuntu Jammy Build Agent (with dynamic permissions)..."
+podman build \
+    --build-arg USER_ID=$HOST_UID \
+    --build-arg GROUP_ID=$SOCKET_GID \
+    -t ceph-jenkins-ubuntu-jammy-agent ./containers/agents/build/ubuntu/jammy
 
 # --- Cleanup Existing Container ---
 if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
@@ -43,6 +55,8 @@ REQUIRED_IMAGES=(
     "ceph-jenkins-controller:latest"
     "ceph-jenkins-seed-agent:latest"
     "ceph-jenkins-centos9-agent:latest"
+    "ceph-jenkins-ubuntu-noble-agent:latest"
+    "ceph-jenkins-ubuntu-jammy-agent:latest"
 )
 MISSING=()
 
