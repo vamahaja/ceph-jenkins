@@ -3,13 +3,12 @@
 # --- Podman Configuration ---
 SOCKET_PATH="/run/user/$(id -u)/podman/podman.sock"
 SOCKET_GID=$(stat -c '%g' $SOCKET_PATH)
-HOST_GROUP=$(id -gn)
 HOST_UID=$(id -u)
 JENKINS_URL="http://localhost:8080"
 
 echo "--- Initializing Deployment for Ceph-Jenkins ---"
 echo "Detected Socket GID: $SOCKET_GID"
-echo "Detected Host Group: $HOST_GROUP"
+echo "Detected Host UID: $HOST_UID"
 
 # --- Build Images ---
 echo "Building Jenkins Controller..."
@@ -17,16 +16,14 @@ podman build -t ceph-jenkins-controller ./containers/controller
 
 echo "Building Seed Agent (with dynamic permissions)..."
 podman build \
-    --build-arg AGENT_GID=$SOCKET_GID \
-    --build-arg AGENT_GROUP=$HOST_GROUP \
-    --build-arg AGENT_UID=$HOST_UID \
+    --build-arg USER_ID=$HOST_UID \
+    --build-arg GROUP_ID=$SOCKET_GID \
     -t ceph-jenkins-seed-agent ./containers/agents/seed
 
 echo "Building CentOS 9 Build Agent (with dynamic permissions)..."
 podman build \
-    --build-arg AGENT_GID=$SOCKET_GID \
-    --build-arg AGENT_GROUP=$HOST_GROUP \
-    --build-arg AGENT_UID=$HOST_UID \
+    --build-arg USER_ID=$HOST_UID \
+    --build-arg GROUP_ID=$SOCKET_GID \
     -t ceph-jenkins-centos9-agent ./containers/agents/build/centos/9.stream
 
 echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
