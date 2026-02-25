@@ -114,12 +114,13 @@ unclassified:
   ansiColorBuildWrapper:
     globalColorMapName: "xterm"
 
-  appearance:
-    pipelineGraphView:
-      showPipelineGraph: true
-      showPipelineStages: true
-      showStageDurations: true
-      showStageNames: true
+# Pipeline Graph View configuration
+appearance:
+  pipelineGraphView:
+    showGraphOnBuildPage: true
+    showGraphOnJobPage: true
+    showStageDurations: true
+    showStageNames: true
 
 # Seeder job
 jobs:
