@@ -32,7 +32,7 @@ pipeline {
         // Set up build scripts
         BUILD_BINARY="${SHARED_WS}/jobs/pipelines/sample_ceph_build_ci/build_binary.sh"
         BUILD_RPM = "${SHARED_WS}/containers/agents/build/centos/build_rpm"
-        BUILD_RPM_ROCKY10 = "${SHARED_WS}/containers/agents/build/rocky-10/build_rpm"
+        BUILD_RPM_ROCKY10 = "${SHARED_WS}/containers/agents/build/centos/build_rpm"
         BUILD_DEB = "${SHARED_WS}/containers/agents/build/ubuntu/build_deb"
     }
 
