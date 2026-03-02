@@ -334,7 +334,7 @@ pipeline {
 
                         // Clean up the shared workspace
                         echo "Cleaning up shared workspace ..."
-                        cleanWs()
+                        cleanWs(disableDeferredWipeout: true, deleteDirs: true)
                     }
                 }
             }
