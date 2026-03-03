@@ -133,14 +133,12 @@ pipeline {
             parallel {
                 stage("Build CentOS 9 RPMs") {
                     when {
-                        expression {
-                            allOf {
-                                expression {
-                                    return "centos9" in params.DISTRO
-                                }
-                                expression {
-                                    return "x86_64" in params.ARCH
-                                }
+                        allOf {
+                            expression {
+                                return "centos9" in params.DISTRO
+                            }
+                            expression {
+                                return "x86_64" in params.ARCH
                             }
                         }
                     }
@@ -180,14 +178,12 @@ pipeline {
 
                 stage("Build Rocky 10 RPMs") {
                     when {
-                        expression {
-                            allOf {
-                                expression {
-                                    return "rocky10" in params.DISTRO
-                                }
-                                expression {
-                                    return "x86_64" in params.ARCH
-                                }
+                        allOf {
+                            expression {
+                                return "rocky10" in params.DISTRO
+                            }
+                            expression {
+                                return "x86_64" in params.ARCH
                             }
                         }
                     }
@@ -224,14 +220,12 @@ pipeline {
 
                 stage("Build Ubuntu 22.04 DEBs") {
                     when {
-                        expression {
-                            allOf {
-                                expression {
-                                    return "jammy" in params.DISTRO
-                                }
-                                expression {
-                                    return "x86_64" in params.ARCH
-                                }
+                        allOf {
+                            expression {
+                                return "jammy" in params.DISTRO
+                            }
+                            expression {
+                                return "x86_64" in params.ARCH
                             }
                         }
                     }
@@ -271,14 +265,12 @@ pipeline {
 
                 stage("Build Ubuntu 24.04 DEBs") {
                     when {
-                        expression {
-                            allOf {
-                                expression {
-                                    return "noble" in params.DISTRO
-                                }
-                                expression {
-                                    return "x86_64" in params.ARCH
-                                }
+                        allOf {
+                            expression {
+                                return "noble" in params.DISTRO
+                            }
+                            expression {
+                                return "x86_64" in params.ARCH
                             }
                         }
                     }
