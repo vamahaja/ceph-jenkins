@@ -332,7 +332,9 @@ pipeline {
                             )
                         }
 
-                        // Clean up the shared workspace
+                        // Remove non-Latin filenames that Java/cleanWs cannot handle
+                        sh "rm -rf '${SHARED_WS}/ceph/src/jaegertracing/opentelemetry-cpp/third_party/prometheus-cpp/3rdparty/civetweb/test/nonlatin' || true"
+
                         echo "Cleaning up shared workspace ..."
                         cleanWs(disableDeferredWipeout: true, deleteDirs: true)
                     }
