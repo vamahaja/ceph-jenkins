@@ -1,0 +1,72 @@
+
+def trigger_daily_build(branch) {
+    def jobName = "${branch.toLowerCase()}-teuthology-runner-ci"
+    build ([
+        wait: false,
+        job: jobName,
+        parameters: [
+            string(name: "BRANCH", value: "${branch}"),
+            string(name: "SMOKE", value: "true"),
+        ]
+    ])
+}
+
+def trigger_weekly_build(branch) {
+    def jobName = "${branch.toLowerCase()}-teuthology-runner-ci"
+    build ([
+        wait: false,
+        job: jobName,
+        parameters: [
+            string(name: "BRANCH", value: "${branch}"),
+            string(name: "RGW", value: "true"),
+            string(name: "CEPHFS", value: "true"),
+            string(name: "RBD", value: "true"),
+            string(name: "ISCSI", value: "true"),
+            string(name: "NFS", value: "true"),
+        ]
+    ])
+}
+
+pipeline {
+    agent {
+        label "ceph-seed-agent"
+    }
+
+    options {
+        // Keep the last 20 builds
+        buildDiscarder(logRotator(numToKeepStr: "20"))
+
+        // Do not checkout code automatically
+        skipDefaultCheckout()
+
+        // Timestamps in console output
+        timestamps()
+
+        // Colorize console output
+        ansiColor("xterm")
+    }
+
+    stages {
+        stage("Checkout Code") {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage("Trigger") {
+            steps {
+                script {
+                    if (params.TYPE.toLowerCase() == "daily") {
+                        echo "Triggering daily build for branch ${params.BRANCH} ..."
+                        trigger_daily_build(params.BRANCH)
+                    } else if (params.TYPE.toLowerCase() == "weekly") {
+                        echo "Triggering weekly build for branch ${params.BRANCH} ..."
+                        trigger_weekly_build(params.BRANCH)
+                    } else {
+                        error("Invalid build type: ${params.TYPE}. Valid types are daily and weekly.")
+                    }
+                }
+            }
+        }
+    }
+}

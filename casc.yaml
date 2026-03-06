@@ -23,6 +23,15 @@ jenkins:
             permissions:
               - "Overall/Read"
 
+  nodes:
+    - permanent:
+        name: "teuthology-node"
+        nodeDescription: "Teuthology Node"
+        labelString: "teuthology-node"
+        retentionStrategy: "always"
+        numExecutors: 10
+        credentialsId: "teuthology-node-credentials"
+
   # Cloud agent configuration
   clouds:
     - docker:
@@ -160,6 +169,15 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              id: "teuthology-node-credentials"
+              description: "Username/Password credentials for teuthology node"
+              scope: GLOBAL
 
 security:
   globalJobDslSecurityConfiguration:

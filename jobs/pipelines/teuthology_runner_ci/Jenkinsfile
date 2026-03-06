@@ -1,0 +1,92 @@
+
+// List of teuthology stages
+def getTeuthologyStages() {
+    return [
+        [name: "SMOKE", runnerParams: "--suite smoke"],
+        [name: "RGW", runnerParams: "--suite rgw"],
+        [name: "CEPHFS", runnerParams: "--suite cephfs"],
+        [name: "RBD", runnerParams: "--suite rbd"],
+        [name: "ISCSI", runnerParams: "--suite iscsi"],
+        [name: "NFS", runnerParams: "--suite nfs"],
+    ]
+}
+
+// Run a teuthology stage
+def runTeuthologyStage(stageConfig) {
+    // Check if the suite is selected
+    def runStage = params[stageConfig.name]
+    if (!runStage) {
+        echo "Skipping suite ${stageConfig.name} as it is not selected ..."
+        return
+    }
+
+    // Run the teuthology stage
+    stage(stageConfig.name) {
+        dir(SHARED_WS) {
+            // Set the runner parameters
+            env.RUNNER_PARAMS = "--branch ${params.BRANCH.toLowerCase()} "
+            env.RUNNER_PARAMS += " ${stageConfig.runnerParams}"
+
+            // Run the teuthology runner and waiter scripts
+            sh shell: "/bin/bash", script: """
+                chmod +x ${TEUTHOLOGY_RUNNER_SCRIPT} && . ${TEUTHOLOGY_RUNNER_SCRIPT}
+                chmod +x ${TEUTHOLOGY_WAITER_SCRIPT} && ${TEUTHOLOGY_WAITER_SCRIPT}
+            """
+        }
+    }
+}
+
+pipeline {
+    agent {
+        label "teuthology-node"
+    }
+
+    options {
+        // Keep the last 20 builds
+        buildDiscarder(logRotator(numToKeepStr: "20"))
+
+        // Do not checkout code automatically
+        skipDefaultCheckout()
+
+        // Timestamps in console output
+        timestamps()
+
+        // Colorize console output
+        ansiColor("xterm")
+    }
+
+    environment {
+        // Set shared workspace path
+        SHARED_WS="/home/ubuntu/workspace/${JOB_NAME}/${BUILD_NUMBER}"
+
+        // Set up the teuthology runner directory
+        TEUTHOLOGY_DIR="/home/ubuntu/teuthology"
+
+        // Set teuthology directory path
+        TEUTHOLOGY_PIPELINE_DIR="${SHARED_WS}/jobs/pipelines/teuthology_runner_ci"
+
+        // Set teuthology runner and waiter script paths
+        TEUTHOLOGY_RUNNER_SCRIPT="${TEUTHOLOGY_PIPELINE_DIR}/teuthology-runner.sh"
+        TEUTHOLOGY_WAITER_SCRIPT="${TEUTHOLOGY_PIPELINE_DIR}/teuthology-waiter.sh"
+    }
+
+    stages {
+        stage("Checkout Code") {
+            steps {
+                dir(SHARED_WS) {
+                    checkout scm
+                }
+            }
+        }
+
+        stage("Run Teuthology Tests") {
+            steps {
+                script {
+                    getTeuthologyStages().each { stageConfig ->
+                        runTeuthologyStage(stageConfig)
+                    }
+                }
+            }
+        }
+    }
+}
