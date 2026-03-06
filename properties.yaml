@@ -5,6 +5,26 @@ jenkins:
         - id: "admin"
           password: "<your_admin_password>"
 
+  nodes:
+    - permanent:
+        name: "teuthology-node"
+        remoteFs: "<teuthology_node_remote_fs>"
+        launcher:
+          ssh:
+            host: "<teuthology_node_ip>"
+            port: 22
+            launchTimeoutSeconds: 120
+            maxNumRetries: 10
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              id: "teuthology-node-credentials"
+              username: "<teuthology_node_username>"
+              password: "<teuthology_node_password>"
+
 unclassified:
   location:
     url: "http://<your_jenkins_server_ip>:8080"
