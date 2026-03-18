@@ -238,6 +238,7 @@ pipeline {
                         DEB_BUILDAREA="${SHARED_WS}/deb/jammy"
                         RELEASE_BUILDAREA="${SHARED_WS}/release/jammy"
                         DIST="jammy"
+                        ARCH="x86_64"
                     }
                     steps {
                         echo "Running the Ceph DEB build script ..."
@@ -251,7 +252,7 @@ pipeline {
 
                         // Archive DEBs
                         echo "DEBs for Ubuntu 22.04 built successfully! Archiving ..."
-                        dir("${ARTIFACTS_DIR}/jammy") {
+                        dir("${ARTIFACTS_DIR}/jammy/${ARCH}") {
                             sh """
                                 rsync -a \\
                                     ${RELEASE_BUILDAREA}/db \\
@@ -283,6 +284,7 @@ pipeline {
                         DEB_BUILDAREA="${SHARED_WS}/deb/noble"
                         RELEASE_BUILDAREA="${SHARED_WS}/release/noble"
                         DIST="noble"
+                        ARCH="x86_64"
                     }
                     steps {
                         echo "Running the Ceph DEB build script ..."
@@ -296,7 +298,7 @@ pipeline {
 
                         // Archive DEBs
                         echo "DEBs for Ubuntu 24.04 built successfully! Archiving ..."
-                        dir("${ARTIFACTS_DIR}/noble") {
+                        dir("${ARTIFACTS_DIR}/noble/${ARCH}") {
                             sh """
                                 rsync -a \\
                                     ${RELEASE_BUILDAREA}/db \\
