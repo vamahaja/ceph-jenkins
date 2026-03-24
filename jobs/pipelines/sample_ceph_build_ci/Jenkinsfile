@@ -45,7 +45,7 @@ pipeline {
             }
 
             stages {
-                stage("Checkout Pipeline Code") {
+                stage("Checkout Repositories") {
                     steps {
                         // Pull the Jenkinsfile repository
                         dir("${SHARED_WS}") {
@@ -129,16 +129,16 @@ pipeline {
             }
         }
 
-        stage("Build RPMs and DEBs") {
+        stage("Build Artifacts") {
             parallel {
-                stage("Build CentOS 9 RPMs") {
+                stage("CentOS 9.Stream") {
                     when {
                         allOf {
                             expression {
-                                return "centos9" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("centos9")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
@@ -176,14 +176,14 @@ pipeline {
                     }
                 }
 
-                stage("Build Rocky 10 RPMs") {
+                stage("Rocky Linux 10") {
                     when {
                         allOf {
                             expression {
-                                return "rocky10" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("rocky10")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
@@ -218,14 +218,14 @@ pipeline {
                     }
                 }
 
-                stage("Build Ubuntu 22.04 DEBs") {
+                stage("Ubuntu 22.04 (jammy)") {
                     when {
                         allOf {
                             expression {
-                                return "jammy" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("jammy")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
@@ -264,14 +264,14 @@ pipeline {
                     }
                 }
 
-                stage("Build Ubuntu 24.04 DEBs") {
+                stage("Ubuntu 24.04 (noble)") {
                     when {
                         allOf {
                             expression {
-                                return "noble" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("noble")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
