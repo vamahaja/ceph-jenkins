@@ -23,15 +23,6 @@ jenkins:
             permissions:
               - "Overall/Read"
 
-  nodes:
-    - permanent:
-        name: "teuthology-node"
-        nodeDescription: "Teuthology Node"
-        labelString: "teuthology-node"
-        retentionStrategy: "always"
-        numExecutors: 10
-        credentialsId: "teuthology-node-credentials"
-
   globalNodeProperties:
     - envVars:
         env:
@@ -175,19 +166,6 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
-
-credentials:
-  system:
-    domainCredentials:
-      - credentials:
-          - usernamePassword:
-              id: "teuthology-node-credentials"
-              description: "Username/Password credentials for teuthology node"
-              scope: GLOBAL
-          - usernamePassword:
-              id: "pulp-credentials"
-              description: "Pulp server credentials for artifact uploads"
-              scope: GLOBAL
 
 security:
   globalJobDslSecurityConfiguration:

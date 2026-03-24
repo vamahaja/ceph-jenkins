@@ -9,12 +9,19 @@ jenkins:
     - permanent:
         name: "teuthology-node"
         remoteFs: "<teuthology_node_remote_fs>"
+        nodeDescription: "Jenkins agent to execute teuthology runs"
+        labelString: "teuthology-node"
+        retentionStrategy: "always"
+        numExecutors: 10
         launcher:
           ssh:
             host: "<teuthology_node_ip>"
             port: 22
+            credentialsId: "teuthology-node-credentials"
             launchTimeoutSeconds: 120
             maxNumRetries: 10
+            sshHostKeyVerificationStrategy:
+              nonVerifyingKeyVerificationStrategy: {}
 
   globalNodeProperties:
     - envVars:
@@ -28,14 +35,16 @@ credentials:
       - credentials:
           - usernamePassword:
               id: "teuthology-node-credentials"
+              description: "SSH credentials for teuthology node"
               username: "<teuthology_node_username>"
               password: "<teuthology_node_password>"
           - usernamePassword:
               id: "pulp-credentials"
+              description: "Pulp server credentials for artifact uploads"
               username: "<pulp_username>"
               password: "<pulp_password>"
 
 unclassified:
   location:
     url: "http://<your_jenkins_server_ip>:8080"
-    adminAddress: "<your_admin_password>"
+    adminAddress: "<your_admin_email>"
