@@ -1,7 +1,7 @@
 // Seed job created during the jenkins initialization
-job('seed-job') {
-    displayName('Seed Job')
-    description('Dynamic seed job for Ceph Jenkins pipelines')
+job('job-dsl-seed') {
+    displayName('Infra: DSL Seed Job')
+    description('Dynamic seed job for processing Ceph Jenkins pipeline defintions')
 
     // Build retention policy
     logRotator {
@@ -40,3 +40,4 @@ job('seed-job') {
         }
     }
 }
+
