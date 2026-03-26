@@ -19,6 +19,7 @@ def publish_to_pulp(artifactPath, distro, distroVersion, arch) {
         ${PULP_PUBLISH_SCRIPT} '${artifactPath}' \
             --branch '${params.CEPH_BRANCH}' \
             --sha1 '${env.SHA1}' \
+            --version '${env.VERSION}' \
             --distro '${distro}' \
             --distro-version '${distroVersion}' \
             --arch '${arch}' \
