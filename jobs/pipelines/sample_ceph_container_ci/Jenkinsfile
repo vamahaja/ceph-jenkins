@@ -78,10 +78,10 @@ pipeline {
                     when {
                         allOf {
                             expression {
-                                return "centos9" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("centos9")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
@@ -131,10 +131,10 @@ pipeline {
                     when {
                         allOf {
                             expression {
-                                return "rocky10" in params.DISTRO
+                                return params.DISTRO.tokenize().contains("rocky10")
                             }
                             expression {
-                                return "x86_64" in params.ARCH
+                                return params.ARCH.tokenize().contains("x86_64")
                             }
                         }
                     }
