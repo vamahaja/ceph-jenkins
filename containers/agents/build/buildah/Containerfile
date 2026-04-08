@@ -6,7 +6,7 @@ ARG GROUP_ID=1000
 ARG USER_NAME=jenkins
 
 # Install all required RPM build tools and pipeline dependencies
-RUN dnf install --allowerasing -y java-21-openjdk-devel && \
+RUN dnf install --allowerasing -y java-21-openjdk-devel podman && \
     dnf clean all
 
 # Create the Jenkins user and group (with root permissions via sudo)
