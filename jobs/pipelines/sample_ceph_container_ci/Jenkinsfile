@@ -23,6 +23,37 @@ def get_build_details(branch, distro, release, arch, flavor) {
     return build_detail
 }
 
+// Push a container image to the Pulp registry following official ceph-ci/ceph tag convention:
+//   SHA1, BRANCH-SHORTSHA1-BASEOS-ARCH-devel, BRANCH
+def publish_container_image() {
+    def imageTag = "${DISTRO}-${RELEASE}-${ARCH}-${env.SHA1}"
+    def shortSha = env.SHA1.take(7)
+    def develTag = "${params.CEPH_BRANCH}-${shortSha}-${BASEOS}-${ARCH}-devel"
+    def tags = [env.SHA1, develTag, params.CEPH_BRANCH]
+
+    withCredentials([usernamePassword(
+        credentialsId: "pulp-credentials",
+        usernameVariable: "PULP_USER",
+        passwordVariable: "PULP_PASS"
+    )]) {
+        tags.each { tag ->
+            sh """
+                sudo bash ${PULP_PUBLISH_IMAGE_SCRIPT} \
+                    --image '${imageTag}' \
+                    --registry '${PULP_SERVER_URL}' \
+                    --base-path 'ceph-ci' \
+                    --tag '${tag}' \
+                    --username "\$PULP_USER" \
+                    --password "\$PULP_PASS"
+            """
+        }
+    }
+
+    tags.each { tag ->
+        echo "Published: ${PULP_SERVER_URL}/v2/ceph-ci/ceph:${tag}"
+    }
+}
+
 pipeline {
     // Use jenkins server as the agent
     agent none
@@ -50,6 +81,10 @@ pipeline {
 
         // Set up the Ceph directory
         CEPH_DIR="${SHARED_WS}/ceph"
+
+        // Pulp project paths
+        PULP_PROJECT_DIR="${SHARED_WS}/pulp-project"
+        PULP_PUBLISH_IMAGE_SCRIPT="${PULP_PROJECT_DIR}/scripts/publish-image.sh"
     }
 
     stages {
@@ -67,6 +102,26 @@ pipeline {
                         dir("${SHARED_WS}") {
                             checkout scm
                         }
+                    }
+                }
+
+                stage("Checkout Pulp Project") {
+                    steps {
+                        // Clone the Pulp project repository
+                        dir("${PULP_PROJECT_DIR}") {
+                            checkout([
+                                $class: "GitSCM",
+                                branches: [[name: "main"]],
+                                extensions: [
+                                    [$class: "CloneOption", depth: 1,
+                                        shallow: true, noTags: true]
+                                ],
+                                userRemoteConfigs: [
+                                    [url: "${env.PULP_PROJECT_REPO}"]
+                                ]
+                            ])
+                        }
+                        sh "chmod +x ${PULP_PROJECT_DIR}/scripts/*.sh"
                     }
                 }
             }
@@ -97,6 +152,7 @@ pipeline {
                         DISTRO="centos"
                         RELEASE="9"
                         ARCH="x86_64"
+                        BASEOS="centos-stream9"
                     }
 
                     steps {
@@ -123,6 +179,8 @@ pipeline {
                             dir("${CEPH_DIR}") {
                                 sh "chmod +x ${BUILD_CONTAINER_SCRIPT} && ${BUILD_CONTAINER_SCRIPT}"
                             }
+
+                            publish_container_image()
                         }
                     }
                 }
@@ -150,6 +208,7 @@ pipeline {
                         DISTRO="rocky"
                         RELEASE="10"
                         ARCH="x86_64"
+                        BASEOS="rocky-10"
                     }
 
                     steps {
@@ -174,6 +233,8 @@ pipeline {
                             dir("${CEPH_DIR}") {
                                 sh "chmod +x ${BUILD_CONTAINER_SCRIPT} && ${BUILD_CONTAINER_SCRIPT}"
                             }
+
+                            publish_container_image()
                         }
                     }
                 }
