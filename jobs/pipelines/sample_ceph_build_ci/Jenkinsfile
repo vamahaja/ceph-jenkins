@@ -413,6 +413,39 @@ pipeline {
                 }
             }
         }
+
+        stage("Trigger Ceph Container Image Pipeline") {
+            when {
+                expression {
+                    return params.BUILD_OCI_IMAGES
+                }
+            }
+
+            agent {
+                node {
+                    label "ceph-build-fedora39-agent"
+                }
+            }
+
+            steps {
+                script {
+                    echo "Triggering sample-ceph-container-pipeline ..."
+                    build(
+                        job: "sample-ceph-container-pipeline",
+                        parameters: [
+                            string(name: "CEPH_BRANCH", value: params.CEPH_BRANCH),
+                            string(name: "SHA1", value: env.SHA1),
+                            string(name: "VERSION", value: env.VERSION),
+                            string(name: "DISTRO", value: params.DISTRO),
+                            string(name: "ARCH", value: params.ARCH),
+                            string(name: "FLAVOR", value: params.FLAVOR)
+                        ],
+                        wait: true,
+                        propagate: true
+                    )
+                }
+            }
+        }
     }
 
     post {

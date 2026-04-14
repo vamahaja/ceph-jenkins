@@ -12,8 +12,20 @@ sudo buildah run $CEPH_CNTR -- dnf install -y epel-release dnf-plugins-core
 # Enable CodeReady Builder (CRB) for Ceph build dependencies
 sudo buildah run $CEPH_CNTR -- dnf config-manager --set-enabled crb
 
-# Fetch repo file from $REPO_URL and add to /etc/yum.repos.d/ceph.repo
-sudo buildah run $CEPH_CNTR -- curl -sL "${REPO_URL}" -o /etc/yum.repos.d/ceph.repo
+# Create yum repo files pointing to the Pulp repository (x86_64 + noarch)
+sudo buildah run $CEPH_CNTR -- bash -c "cat > /etc/yum.repos.d/ceph.repo <<EOF
+[ceph-x86_64]
+name=Ceph Packages - x86_64
+baseurl=${REPO_URL}x86_64/
+enabled=1
+gpgcheck=0
+
+[ceph-noarch]
+name=Ceph Packages - noarch
+baseurl=${REPO_URL}noarch/
+enabled=1
+gpgcheck=0
+EOF"
 
 # Install Ceph packages
 sudo buildah run $CEPH_CNTR -- dnf install -y ceph ceph-common ceph-osd ceph-mon ceph-mgr
