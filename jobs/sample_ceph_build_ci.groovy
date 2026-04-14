@@ -31,6 +31,11 @@ pipelineJob("sample-ceph-pipeline") {
             )
             stringParam("DEB_BUILD_OPTS", "", "Additional DEB build options")
             booleanParam("PUBLISH_ARTIFACTS", true, "Publish built packages to Pulp")
+            booleanParam(
+                "BUILD_OCI_IMAGES",
+                false,
+                "Run sample-ceph-container-pipeline after this build (build and push container images to Pulp)"
+            )
         }
     }
 }

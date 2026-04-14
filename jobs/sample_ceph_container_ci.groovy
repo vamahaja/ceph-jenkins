@@ -19,6 +19,8 @@ pipelineJob("sample-ceph-container-pipeline") {
         // Add the required parameters for the job
         parameters {
             stringParam("CEPH_BRANCH", "main", "Ceph branch to build")
+            stringParam("SHA1", "", "Git SHA1 of the Ceph build (from the build pipeline)")
+            stringParam("VERSION", "", "Ceph version string (from the build pipeline)")
             stringParam("DISTRO", "centos9 rocky10", "Distribution to build")
             stringParam("ARCH", "x86_64", "Architecture to build")
             choiceParam("FLAVOR", ["default"], "Build flavor")

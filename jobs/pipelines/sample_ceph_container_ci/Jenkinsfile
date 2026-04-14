@@ -1,26 +1,6 @@
-
-// Function to get the build detail from the Shaman API
-def get_build_details(branch, distro, release, arch, flavor) {
-    // Set the build URL
-    def build_url = "https://shaman.ceph.com/api/repos/ceph/${branch}/latest/${distro}/${release}/"
-
-    // Get the build detail
-    def get_build_detail = sh(script: "curl -s ${build_url}", returnStdout: true).trim()
-
-    // Parse the build detail
-    def build_detail_json = readJSON text: get_build_detail
-
-    // Find the build detail for the given architecture
-    def build_detail = build_detail_json.find {
-        arch in it.archs && it.flavor == flavor
-    }
-
-    // Validate the build detail
-    if (build_detail == null) {
-        error "No build detail found for branch ${branch}"
-    }
-
-    return build_detail
+// Construct the Pulp RPM repository content URL for a given build
+def get_pulp_repo_url(branch, sha1, distro, release, flavor) {
+    return "${env.PULP_SERVER_URL}/pulp/content/repos/ceph/${branch}/${sha1}/${distro}/${release}/flavors/${flavor}/"
 }
 
 // Push a container image to the Pulp registry following official ceph-ci/ceph tag convention:
@@ -129,7 +109,7 @@ pipeline {
 
         stage("Build Ceph Container Image") {
             parallel {
-                stage("Build CentOS9-x86_64 Container Image") {
+                stage("CentOS 9.Stream") {
                     when {
                         allOf {
                             expression {
@@ -158,24 +138,13 @@ pipeline {
                     steps {
                         script {
                             echo "Running Buildah container image build script ..."
-                            
-                            // Get the build details
-                            def build_detail = get_build_details(
-                                params.CEPH_BRANCH, DISTRO, RELEASE, ARCH, params.FLAVOR
+
+                            env.SHA1 = params.SHA1
+                            env.VERSION = params.VERSION
+                            env.REPO_URL = get_pulp_repo_url(
+                                params.CEPH_BRANCH, env.SHA1, DISTRO, RELEASE, params.FLAVOR
                             )
 
-                            // Set the environment variables
-                            env.SHA1 = build_detail.sha1
-                            env.VERSION = build_detail.extra.version
-
-                            // Normalize the repository URL
-                            def chacra_url = build_detail.chacra_url
-                            if (chacra_url.endsWith("/")) {
-                                chacra_url = chacra_url.take(chacra_url.length() - 1)
-                            }
-                            env.REPO_URL = "${chacra_url}/repo"
-
-                            // Execute the build container script
                             dir("${CEPH_DIR}") {
                                 sh "chmod +x ${BUILD_CONTAINER_SCRIPT} && ${BUILD_CONTAINER_SCRIPT}"
                             }
@@ -185,7 +154,7 @@ pipeline {
                     }
                 }
 
-                stage("Build Rocky10-x86_64 Container Image") {
+                stage("Rocky Linux 10") {
                     when {
                         allOf {
                             expression {
@@ -213,23 +182,14 @@ pipeline {
 
                     steps {
                         script {
-                            // Get the build details
-                            def build_detail = get_build_details(
-                                params.CEPH_BRANCH, DISTRO, RELEASE, ARCH, params.FLAVOR
+                            echo "Running Buildah container image build script ..."
+
+                            env.SHA1 = params.SHA1
+                            env.VERSION = params.VERSION
+                            env.REPO_URL = get_pulp_repo_url(
+                                params.CEPH_BRANCH, env.SHA1, DISTRO, RELEASE, params.FLAVOR
                             )
 
-                            // Set the environment variables
-                            env.SHA1 = build_detail.sha1
-                            env.VERSION = build_detail.extra.version
-
-                            // Normalize the repository URL
-                            def chacra_url = build_detail.chacra_url
-                            if (chacra_url.endsWith("/")) {
-                                chacra_url = chacra_url.take(chacra_url.length() - 1)
-                            }
-                            env.REPO_URL = "${chacra_url}/repo"
-
-                            // Execute the build container script
                             dir("${CEPH_DIR}") {
                                 sh "chmod +x ${BUILD_CONTAINER_SCRIPT} && ${BUILD_CONTAINER_SCRIPT}"
                             }
