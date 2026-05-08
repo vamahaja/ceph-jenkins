@@ -9,7 +9,7 @@ ARG AGENT_GROUP=jenkins-bridge
 
 # Install Core Dependencies
 RUN dnf install -y \
-    java-17-openjdk-devel \
+    java-21-openjdk-devel \
     git \
     which \
     && dnf clean all
