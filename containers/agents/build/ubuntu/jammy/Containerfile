@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install all required Debian build tools and pipeline dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
-    openjdk-17-jdk-headless \
+    openjdk-21-jdk-headless \
     git \
     rsync \
     build-essential \

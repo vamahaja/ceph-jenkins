@@ -8,7 +8,7 @@ ARG USER_NAME=jenkins
 # Install all required RPM build tools and pipeline dependencies
 RUN dnf install --allowerasing -y \
     sudo \
-    java-17-openjdk-devel \
+    java-21-openjdk-devel \
     git \
     rsync \
     which \
