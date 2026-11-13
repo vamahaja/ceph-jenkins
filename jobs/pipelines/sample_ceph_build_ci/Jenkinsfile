@@ -60,9 +60,9 @@ pipeline {
 
         // Set up build scripts
         BUILD_BINARY="${SHARED_WS}/jobs/pipelines/sample_ceph_build_ci/build_binary.sh"
-        BUILD_RPM = "${SHARED_WS}/containers/agents/build/centos/build_rpm"
-        BUILD_RPM_ROCKY10 = "${SHARED_WS}/containers/agents/build/centos/build_rpm"
-        BUILD_DEB = "${SHARED_WS}/containers/agents/build/ubuntu/build_deb"
+        BUILD_RPM = "${SHARED_WS}/deploy/images/agents/build/centos/build_rpm"
+        BUILD_RPM_ROCKY10 = "${SHARED_WS}/deploy/images/agents/build/centos/build_rpm"
+        BUILD_DEB = "${SHARED_WS}/deploy/images/agents/build/ubuntu/build_deb"
 
         PULP_PROJECT_DIR="${SHARED_WS}/pulp-project"
         PULP_PUBLISH_SCRIPT="${SHARED_WS}/pulp-project/scripts/publish-packages.sh"
