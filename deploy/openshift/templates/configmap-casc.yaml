@@ -1,0 +1,17 @@
+{{- if not .Values.cascBaseContent }}
+{{- fail "cascBaseContent is required. Pass it with: --set-file cascBaseContent=./casc/base.yaml" }}
+{{- end }}
+{{- if not .Values.cascCloudsContent }}
+{{- fail "cascCloudsContent is required. Pass it with: --set-file cascCloudsContent=./casc/clouds-openshift.yaml" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}-casc
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+data:
+  01-base.yaml: |
+{{ .Values.cascBaseContent | indent 4 }}
+  02-clouds.yaml: |
+{{ .Values.cascCloudsContent | indent 4 }}

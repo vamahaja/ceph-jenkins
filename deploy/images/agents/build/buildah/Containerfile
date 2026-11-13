@@ -6,12 +6,20 @@ ARG GROUP_ID=1000
 ARG USER_NAME=jenkins
 
 # Install all required RPM build tools and pipeline dependencies
-RUN dnf install --allowerasing -y java-21-openjdk-devel podman && \
+RUN dnf install --allowerasing -y java-25-openjdk-devel podman && \
     dnf clean all
 
-# Create the Jenkins user and group (with root permissions via sudo)
+# Create the Jenkins user and group (buildah image may already use UID 1000)
 RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
-    useradd -u ${USER_ID} -g ${GROUP_ID} -m ${USER_NAME}
+    if getent passwd ${USER_ID} >/dev/null 2>&1; then \
+      EXISTING="$(getent passwd ${USER_ID} | cut -d: -f1)" && \
+      if [ "${EXISTING}" != "${USER_NAME}" ]; then \
+        usermod -l ${USER_NAME} "${EXISTING}" || true; \
+      fi && \
+      usermod -g ${GROUP_ID} -d /home/${USER_NAME} -m ${USER_NAME}; \
+    else \
+      useradd -u ${USER_ID} -g ${GROUP_ID} -m ${USER_NAME}; \
+    fi
 
 # Set root permissions for the Jenkins user
 RUN echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER_NAME} && \

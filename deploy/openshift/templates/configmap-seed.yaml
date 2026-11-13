@@ -1,0 +1,12 @@
+{{- if not .Values.seedContent }}
+{{- fail "seedContent is required. Pass it with: --set-file seedContent=./jobs/seed.groovy" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}-seed
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+data:
+  seed.groovy: |
+{{ .Values.seedContent | indent 4 }}

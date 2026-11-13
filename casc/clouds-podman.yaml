@@ -1,35 +1,5 @@
+# Podman/Docker cloud agents (requires host podman.sock mounted into the controller).
 jenkins:
-  systemMessage: "Ceph Jenkins Controller"
-  numExecutors: 0
-  mode: EXCLUSIVE
-
-  # Security configuration
-  securityRealm:
-    local:
-      allowsSignup: false
-      users:
-        - id: "admin"
-
-  # Authorization configuration
-  authorizationStrategy:
-    globalMatrix:
-      entries:
-        - user:
-            name: "admin"
-            permissions:
-              - "Overall/Administer"
-        - user:
-            name: "anonymous"
-            permissions:
-              - "Overall/Read"
-
-  globalNodeProperties:
-    - envVars:
-        env:
-          - key: "PULP_PROJECT_REPO"
-            value: "https://github.com/vamahaja/pulp-project.git"
-
-  # Cloud agent configuration
   clouds:
     - docker:
         name: "podman-cloud"
@@ -166,30 +136,3 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
-
-security:
-  globalJobDslSecurityConfiguration:
-    # Allow Job DSL to run without manual script approval.
-    useScriptSecurity: false
-  scriptApproval:
-    # Allow the specific DSL scripts to bypass the sandbox.
-    approvedSignatures:
-      - "method javaposse.jobdsl.dsl.DslFactory job java.lang.String"
-      - "method javaposse.jobdsl.dsl.Job scm(groovy.lang.Closure)"
-
-# Console color configuration
-unclassified:
-  ansiColorBuildWrapper:
-    globalColorMapName: "xterm"
-
-# Pipeline Graph View configuration
-appearance:
-  pipelineGraphView:
-    showGraphOnBuildPage: true
-    showGraphOnJobPage: true
-    showStageDurations: true
-    showStageNames: true
-
-# Seeder job
-jobs:
-  - file: "/var/jenkins_home/seed.groovy"

@@ -41,7 +41,11 @@ RUN dnf -y install epel-release dnf-plugins-core && \
     dnf clean all
 
 # Build ragel from source and package as RPM (not available in EPEL 10)
-RUN curl -sL https://www.colm.net/files/ragel/ragel-6.10.tar.gz | tar xz -C /tmp && \
+RUN curl -fL --retry 5 --retry-all-errors --retry-delay 5 \
+      -o /tmp/ragel-6.10.tar.gz \
+      https://www.colm.net/files/ragel/ragel-6.10.tar.gz && \
+    tar xzf /tmp/ragel-6.10.tar.gz -C /tmp && \
+    rm -f /tmp/ragel-6.10.tar.gz && \
     cd /tmp/ragel-6.10 && \
     ./configure --prefix=/usr && make -j$(nproc) && make install && \
     mkdir -p /tmp/ragel-rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \

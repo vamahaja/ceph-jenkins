@@ -1,0 +1,195 @@
+# OpenShift/Kubernetes cloud agents (in-cluster).
+#
+# Defaults assume Helm release name "ceph-jenkins" in namespace "ceph-jenkins".
+# Override jenkinsUrl / jenkinsTunnel / namespace / images to match your install.
+#
+# Pod templates use a jnlp sidecar plus a "builder" container. Pipelines that
+# only set agent { label '...' } run on jnlp; wrap build steps in
+# container('builder') { ... } on OpenShift, or adapt agent images for JNLP.
+jenkins:
+  clouds:
+    - kubernetes:
+        name: "openshift"
+        namespace: "ceph-jenkins"
+        # Empty serverUrl uses the in-cluster Kubernetes API.
+        jenkinsUrl: "http://ceph-jenkins:8080/"
+        jenkinsTunnel: "ceph-jenkins:50000"
+        containerCap: 10
+        templates:
+          - name: "ceph-seed-agent"
+            label: "ceph-seed-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-seed-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+          - name: "ceph-build-fedora39-agent"
+            label: "ceph-build-fedora39-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-fedora39-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
+          - name: "ceph-build-centos9-agent"
+            label: "ceph-build-centos9-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-centos9-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
+          - name: "ceph-build-rocky10-agent"
+            label: "ceph-build-rocky10-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-rocky10-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
+          - name: "ceph-build-ubuntu-noble-agent"
+            label: "ceph-build-ubuntu-noble-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-ubuntu-noble-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
+          - name: "ceph-build-ubuntu-jammy-agent"
+            label: "ceph-build-ubuntu-jammy-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-ubuntu-jammy-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
+          - name: "ceph-build-buildah-agent"
+            label: "ceph-build-buildah-agent"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:latest"
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "builder"
+                image: "ceph-jenkins-buildah-agent:latest"
+                ttyEnabled: true
+                command: "sleep"
+                args: "99d"
+                privileged: true
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+            volumes:
+              - persistentVolumeClaim:
+                  claimName: "ceph-jenkins-shared-workspace"
+                  mountPath: "/home/jenkins/workspace"
+                  readOnly: false
