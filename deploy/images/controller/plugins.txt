@@ -9,6 +9,7 @@ email-ext
 git
 groovy
 job-dsl
+kubernetes
 matrix-auth
 pipeline-graph-view
 pipeline-utility-steps

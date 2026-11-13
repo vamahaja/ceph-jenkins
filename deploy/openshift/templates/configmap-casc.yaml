@@ -1,0 +1,42 @@
+{{- if and .Values.cascBaseContent .Values.cascCloudsContent }}
+{{- $serviceName := include "ceph-jenkins.fullname" . }}
+{{- $serviceAccountName := include "ceph-jenkins.serviceAccountName" . }}
+{{- $sharedWorkspaceClaim := printf "%s-shared-workspace" $serviceName }}
+{{- $agentPrefix := default "" .Values.agentImages.prefix }}
+{{- /* Ensure prefix ends with / when non-empty so image refs concatenate cleanly */ -}}
+{{- if and $agentPrefix (not (hasSuffix "/" $agentPrefix)) }}
+{{- $agentPrefix = printf "%s/" $agentPrefix }}
+{{- end }}
+{{- $agentTag := default "latest" .Values.agentImages.tag }}
+{{- $pullSecrets := "" }}
+{{- if .Values.agentImages.imagePullSecrets }}
+{{- $pullSecrets = "imagePullSecrets:" }}
+{{- range .Values.agentImages.imagePullSecrets }}
+{{- $pullSecrets = printf "%s\n              - name: %s" $pullSecrets . }}
+{{- end }}
+{{- end }}
+{{- $clouds := .Values.cascCloudsContent
+    | replace "__JENKINS_NAMESPACE__" .Release.Namespace
+    | replace "__JENKINS_SERVICE__" $serviceName
+    | replace "__JENKINS_SERVICE_ACCOUNT__" $serviceAccountName
+    | replace "__SHARED_WORKSPACE_CLAIM__" $sharedWorkspaceClaim
+    | replace "__AGENT_IMAGE_PREFIX__" $agentPrefix
+    | replace "__AGENT_IMAGE_TAG__" $agentTag
+    | replace "__AGENT_IMAGE_PULL_SECRETS__" $pullSecrets }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}-casc
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+data:
+  01-base.yaml: |
+{{ .Values.cascBaseContent | indent 4 }}
+  02-clouds.yaml: |
+{{ $clouds | indent 4 }}
+{{- else if .Values.validate }}
+{{- if not .Values.cascBaseContent }}
+{{- fail "cascBaseContent is required. Pass it with: --set-file cascBaseContent=./casc/base.yaml" }}
+{{- end }}
+{{- fail "cascCloudsContent is required. Pass it with: --set-file cascCloudsContent=./casc/clouds-openshift.yaml" }}
+{{- end }}

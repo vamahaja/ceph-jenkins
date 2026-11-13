@@ -1,0 +1,119 @@
+# Controller image (push to a registry the cluster can pull)
+image:
+  repository: ceph-jenkins-controller
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Agent images used in casc/clouds-openshift.yaml (Kubernetes cloud templates)
+# prefix example: "image-registry.openshift-image-registry.svc:5000/ceph-jenkins/"
+# (trailing slash optional; chart normalizes it)
+agentImages:
+  prefix: ""
+  tag: latest
+  # Secret names in the release namespace for pulling private agent images
+  imagePullSecrets: []
+
+# Also used by the controller Deployment when pulling the controller image
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Matches Podman deploy JAVA_OPTS
+javaOpts: >-
+  -Xms4g -Xmx8g
+  -XX:+UseG1GC
+  -XX:+ExplicitGCInvokesConcurrent
+  -Djenkins.install.runSetupWizard=false
+  -Djava.awt.headless=true
+  -Dcasc.jenkins.config=/var/jenkins_home/casc_configs/
+
+# Matches Podman --cpus 4 / --memory 12g (with 4g reservation as request)
+resources:
+  requests:
+    cpu: "2"
+    memory: 4Gi
+  limits:
+    cpu: "4"
+    memory: 12Gi
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  agentPort: 50000
+
+route:
+  enabled: true
+  host: ""
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+persistence:
+  home:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  # Required RWX PVC mounted by build-agent templates at /home/jenkins/workspace.
+  sharedWorkspace:
+    size: 100Gi
+    # Must support ReadWriteMany (multi-agent mounts).
+    storageClass: ""
+    accessModes:
+      - ReadWriteMany
+
+# Populate via helm --set-file (see README). Required for install.
+cascBaseContent: ""
+cascCloudsContent: ""
+seedContent: ""
+
+# Prefer an existing Secret for real credentials; otherwise set propertiesContent via --set-file
+propertiesExistingSecret: ""
+propertiesExistingSecretKey: properties.yaml
+propertiesContent: ""
+
+# Require Casc/seed/properties inputs on install. Set false to render a single
+# template (e.g. RBAC only) without the rest of the release inputs.
+validate: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# RBAC for Kubernetes plugin to provision agent pods
+rbac:
+  create: true
+
+podAnnotations: {}
+
+# Leave empty for OpenShift restricted-v2 (avoid hardcoded fsGroup: 1000).
+# OpenShift assigns an allowed UID/GID range from the namespace.
+podSecurityContext: {}
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# TCP probes on port 8080 (/login may return 403, which fails httpGet)
+probes:
+  liveness:
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 5
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
