@@ -58,7 +58,7 @@ echo "Building Rocky 10 Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-rocky10-agent ./containers/agents/build/rocky-10
+    -t ceph-jenkins-rocky10-agent ./containers/agents/build/rocky/10
 
 echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
 podman build \
