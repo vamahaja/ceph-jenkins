@@ -1,0 +1,17 @@
+{{- if .Values.persistence.sharedWorkspace.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}-shared-workspace
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.sharedWorkspace.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.sharedWorkspace.size }}
+  {{- if .Values.persistence.sharedWorkspace.storageClass }}
+  storageClassName: {{ .Values.persistence.sharedWorkspace.storageClass | quote }}
+  {{- end }}
+{{- end }}

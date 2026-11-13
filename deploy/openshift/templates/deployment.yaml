@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "ceph-jenkins.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ceph-jenkins.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "ceph-jenkins.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: jenkins-controller
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.javaOpts | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: agent-listener
+              containerPort: 50000
+              protocol: TCP
+          volumeMounts:
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+            - name: casc
+              mountPath: /var/jenkins_home/casc_configs/01-base.yaml
+              subPath: 01-base.yaml
+              readOnly: true
+            - name: casc
+              mountPath: /var/jenkins_home/casc_configs/02-clouds.yaml
+              subPath: 02-clouds.yaml
+              readOnly: true
+            - name: properties
+              mountPath: /var/jenkins_home/casc_configs/03-properties.yaml
+              subPath: {{ .Values.propertiesExistingSecretKey | default "properties.yaml" }}
+              readOnly: true
+            - name: seed
+              mountPath: /var/jenkins_home/seed.groovy
+              subPath: seed.groovy
+              readOnly: true
+            {{- if .Values.persistence.sharedWorkspace.enabled }}
+            - name: shared-workspace
+              mountPath: /home/jenkins/workspace
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # TCP probes: /login may return 403 (auth required), which fails httpGet
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+      volumes:
+        - name: jenkins-home
+          {{- if .Values.persistence.home.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ceph-jenkins.fullname" . }}-home
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: casc
+          configMap:
+            name: {{ include "ceph-jenkins.fullname" . }}-casc
+        - name: properties
+          secret:
+            secretName: {{ include "ceph-jenkins.propertiesSecretName" . }}
+        - name: seed
+          configMap:
+            name: {{ include "ceph-jenkins.fullname" . }}-seed
+        {{- if .Values.persistence.sharedWorkspace.enabled }}
+        - name: shared-workspace
+          persistentVolumeClaim:
+            claimName: {{ include "ceph-jenkins.fullname" . }}-shared-workspace
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

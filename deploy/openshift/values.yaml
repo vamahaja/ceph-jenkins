@@ -1,0 +1,103 @@
+# Controller image (push to a registry the cluster can pull)
+image:
+  repository: ceph-jenkins-controller
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Matches Podman deploy JAVA_OPTS
+javaOpts: >-
+  -Xms4g -Xmx8g
+  -XX:+UseG1GC
+  -XX:+ExplicitGCInvokesConcurrent
+  -Djenkins.install.runSetupWizard=false
+  -Djava.awt.headless=true
+  -Dcasc.jenkins.config=/var/jenkins_home/casc_configs/
+
+# Matches Podman --cpus 4 / --memory 12g (with 4g reservation as request)
+resources:
+  requests:
+    cpu: "2"
+    memory: 4Gi
+  limits:
+    cpu: "4"
+    memory: 12Gi
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  agentPort: 50000
+
+route:
+  enabled: true
+  host: ""
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+persistence:
+  home:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  sharedWorkspace:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteMany
+
+# Populate via helm --set-file (see README). Required for install.
+cascBaseContent: ""
+cascCloudsContent: ""
+seedContent: ""
+
+# Prefer an existing Secret for real credentials; otherwise set propertiesContent via --set-file
+propertiesExistingSecret: ""
+propertiesExistingSecretKey: properties.yaml
+propertiesContent: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# RBAC for Kubernetes plugin to provision agent pods
+rbac:
+  create: true
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# TCP probes on port 8080 (/login may return 403, which fails httpGet)
+probes:
+  liveness:
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 5
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6

@@ -1,0 +1,17 @@
+{{- if .Values.persistence.home.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ceph-jenkins.fullname" . }}-home
+  labels:
+    {{- include "ceph-jenkins.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.home.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.home.size }}
+  {{- if .Values.persistence.home.storageClass }}
+  storageClassName: {{ .Values.persistence.home.storageClass | quote }}
+  {{- end }}
+{{- end }}

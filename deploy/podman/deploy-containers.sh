@@ -113,13 +113,15 @@ podman run -d \
        -Djenkins.install.runSetupWizard=false \
        -Djava.awt.headless=true \
        -Dcasc.jenkins.config=/var/jenkins_home/casc_configs/" \
-    -v $JENKINS_HOME_VOLUME:/var/jenkins_home \
-    -v $(pwd)/casc.yaml:/var/jenkins_home/casc_configs/01-casc.yaml:z \
-    -v $JENKINS_CONFIG_DIR/properties.yaml:/var/jenkins_home/casc_configs/02-properties.yaml:z \
+    -v $JENKINS_HOME_VOLUME:/var/jenkins_home:z \
+    -v $(pwd)/casc/base.yaml:/var/jenkins_home/casc_configs/01-base.yaml:z \
+    -v $(pwd)/casc/clouds-podman.yaml:/var/jenkins_home/casc_configs/02-clouds.yaml:z \
+    -v $JENKINS_CONFIG_DIR/properties.yaml:/var/jenkins_home/casc_configs/03-properties.yaml:z \
     -v $(pwd)/jobs/seed.groovy:/var/jenkins_home/seed.groovy:z \
-    -v $SOCKET_PATH:/var/run/podman.sock:z \
+    -v $SOCKET_PATH:/var/run/podman.sock \
     --group-add $SOCKET_GID \
     --userns=keep-id \
+    --security-opt label=disable \
     ceph-jenkins-controller:latest
 
 # --- Health Check Step ---
@@ -155,7 +157,7 @@ while [ $COUNT -lt $MAX_RETRIES ]; do
 
     echo -n "."
     sleep $WAIT_INTERVAL
-    ((COUNT++))
+    COUNT=$((COUNT + 1))
 done
 
 if [ "$SUCCESS" = false ]; then

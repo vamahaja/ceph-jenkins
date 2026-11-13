@@ -15,13 +15,16 @@ Before deploying the containerized controller, ensure the following requirements
     * `deploy/images/create-images.sh`: Builds controller and agent images.
     * `deploy/images/controller/plugins.txt`: Lists all required plugins.
     * `deploy/podman`: Podman deployment scripts.
-    * `deploy/podman/deploy-containers.sh`: Deploys the Jenkins controller container.
-    * `casc.yaml`: Defines system-level configurations.
-    * `properties.yaml`: Actual environment configurations.
+    * `deploy/podman/deploy-containers.sh`: Deploys the Jenkins controller container with Podman.
+    * `deploy/openshift`: Helm chart to deploy the Jenkins controller on OpenShift.
+    * `casc/base.yaml`: Shared JCasC (security, Job DSL, seed, UI).
+    * `casc/clouds-podman.yaml`: Podman/Docker agent cloud (used by Podman deploy).
+    * `casc/clouds-openshift.yaml`: Kubernetes agent cloud (used by OpenShift deploy).
+    * `properties.yaml`: Actual environment configurations / secrets template.
     * `jobs/seed.groovy`: The initial script to bootstrap the job-processing logic.
     * `$HOME/jenkins_config`: Jenkins configs (properties.yaml, jenkins_home & shared_workspace)
 
-### Deployment Steps
+### Deployment Steps (Podman)
 
 Deployment follows "Configuration as Code" workflow to maintain the repository as the single source of truth.
 
@@ -30,7 +33,7 @@ Deployment follows "Configuration as Code" workflow to maintain the repository a
     mkdir -p $HOME/jenkins_config
     ```
 
-2. **Create Properties:** Create `$HOME/jenkins_config/properties.yaml` with your real-world Jenkins configs. This "hydrates" the `casc.yaml` template with your actual cluster details and secrets.
+2. **Create Properties:** Create `$HOME/jenkins_config/properties.yaml` with your real-world Jenkins configs. This "hydrates" the shared Casc with your actual cluster details and secrets.
 
 3. **Start socket service:** This will enable and start the socket for user.
     ```sh
@@ -66,10 +69,34 @@ Deployment follows "Configuration as Code" workflow to maintain the repository a
 
 10. **Process Project Jobs:** Run the `Seed` from the Jenkins UI, providing the relative path to your project's Groovy definitions to generate project-specific pipelines.
 
+### Deployment Steps (OpenShift)
+
+Deploy the Jenkins controller to an OpenShift cluster with the Helm chart under `deploy/openshift`. See [`deploy/openshift/README.md`](deploy/openshift/README.md) for full details.
+
+1. **Create Properties:** Same as Podman — use `$HOME/jenkins_config/properties.yaml` (or another filled-in copy of `properties.yaml`).
+
+2. **Build and push images:** Build with `./deploy/images/create-images.sh`, then tag/push the controller image to a registry the cluster can pull.
+
+3. **Install the chart:**
+    ```sh
+    helm upgrade --install ceph-jenkins ./deploy/openshift \
+      --namespace ceph-jenkins \
+      --set image.repository=<registry>/<namespace>/ceph-jenkins-controller \
+      --set image.tag=latest \
+      --set-file cascBaseContent=./casc/base.yaml \
+      --set-file cascCloudsContent=./casc/clouds-openshift.yaml \
+      --set-file seedContent=./jobs/seed.groovy \
+      --set-file propertiesContent=$HOME/jenkins_config/properties.yaml
+    ```
+
+4. **Bootstrap Jobs:** Same as Podman — JCasC runs `seed.groovy` on startup.
+
+> **Note:** OpenShift agents use the Kubernetes cloud (`casc/clouds-openshift.yaml`). Build steps should run in `container('builder') { ... }`. See [`deploy/openshift/README.md`](deploy/openshift/README.md).
+
 ### Logging
 
 The Ceph Jenkins environment utilizes multiple logging layers to ensure visibility across the "controller/builder" architecture.
 
-* **Controller Logs:** Monitor the startup and JCasC initialization via `podman logs -f jenkins-controller`.
-
+* **Controller Logs (Podman):** Monitor the startup and JCasC initialization via `podman logs -f jenkins-controller`.
+* **Controller Logs (OpenShift):** `oc logs -f deploy/ceph-jenkins -n <namespace>`.
 * **Builder Logs:** Detailed system logs are often captured during build execution using `journalctl`.
