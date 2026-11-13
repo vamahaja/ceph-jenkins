@@ -11,12 +11,14 @@ Before deploying the containerized controller, ensure the following requirements
 * **Container Runtime**: Podman or Docker must be installed on the host machine.
 
 * **Configuration Files and Directories:** The following are important files and directories -
-    * `containers`: Contains custom Jenkins controller & agent Containerfile and configs.
-    * `containers/controller/plugins.txt`: Lists all required plugins.
+    * `deploy/images`: Custom Jenkins controller & agent image definitions (Containerfiles).
+    * `deploy/images/create-images.sh`: Builds controller and agent images.
+    * `deploy/images/controller/plugins.txt`: Lists all required plugins.
+    * `deploy/podman`: Podman deployment scripts.
+    * `deploy/podman/deploy-containers.sh`: Deploys the Jenkins controller container.
     * `casc.yaml`: Defines system-level configurations.
     * `properties.yaml`: Actual environment configurations.
     * `jobs/seed.groovy`: The initial script to bootstrap the job-processing logic.
-    * `scripts`: `Bash`/`Python` scripts to perform specific operations.
     * `$HOME/jenkins_config`: Jenkins configs (properties.yaml, jenkins_home & shared_workspace)
 
 ### Deployment Steps
@@ -45,19 +47,24 @@ Deployment follows "Configuration as Code" workflow to maintain the repository a
     sudo loginctl enable-linger $(id -u)
     ```
 
-6. **Set Execute Permissions:** Set execute permissions to `scripts/deploy.sh` script.
+6. **Set Execute Permissions:** Set execute permissions on the deploy scripts.
     ```sh
-    chmod +x ./scripts/deploy.sh
+    chmod +x ./deploy/images/create-images.sh ./deploy/podman/deploy-containers.sh
     ```
 
-7. **Execute `deploy.sh`:** This script will build controller and agent images and deploys `jenkins-controller` container.
+7. **Create Images:** Build controller and agent images.
     ```sh
-    ./scripts/deploy.sh
+    ./deploy/images/create-images.sh
     ```
 
-8. **Bootstrap Jobs:** Upon startup, JCasC will automatically execute `seed.groovy` to create the `Seed Job` job.
+8. **Deploy Containers:** Deploy the `jenkins-controller` container.
+    ```sh
+    ./deploy/podman/deploy-containers.sh
+    ```
 
-9. **Process Project Jobs:** Run the `Seed` from the Jenkins UI, providing the relative path to your project's Groovy definitions to generate project-specific pipelines.
+9. **Bootstrap Jobs:** Upon startup, JCasC will automatically execute `seed.groovy` to create the `Seed Job` job.
+
+10. **Process Project Jobs:** Run the `Seed` from the Jenkins UI, providing the relative path to your project's Groovy definitions to generate project-specific pipelines.
 
 ### Logging
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # --- Default Configuration ---
 JENKINS_CONFIG_DIR="$HOME/jenkins_config"
 JENKINS_PROPERTIES="$JENKINS_CONFIG_DIR/properties.yaml"
@@ -24,70 +26,14 @@ fi
 
 # --- Podman Configuration ---
 SOCKET_PATH="/run/user/$(id -u)/podman/podman.sock"
-SOCKET_GID=$(stat -c '%g' $SOCKET_PATH)
-HOST_UID=$(id -u)
+SOCKET_GID=$(stat -c '%g' "$SOCKET_PATH")
 JENKINS_URL="http://localhost:8080"
 
 echo "--- Initializing Deployment for Ceph-Jenkins ---"
 echo "Detected Socket GID: $SOCKET_GID"
-echo "Detected Host UID: $HOST_UID"
 
-# --- Build Images ---
-echo "Building Jenkins Controller..."
-podman build --pull=always -t ceph-jenkins-controller ./containers/controller
-
-echo "Building Seed Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-seed-agent ./containers/agents/seed
-
-echo "Building Fedora 39 Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-fedora39-agent ./containers/agents/build/fedora/39
-
-echo "Building CentOS 9 Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-centos9-agent ./containers/agents/build/centos/9.stream
-
-echo "Building Rocky 10 Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-rocky10-agent ./containers/agents/build/rocky/10
-
-echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-ubuntu-noble-agent ./containers/agents/build/ubuntu/noble
-
-echo "Building Ubuntu Jammy Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-ubuntu-jammy-agent ./containers/agents/build/ubuntu/jammy
-
-echo "Building Buildah Build Agent (with dynamic permissions)..."
-podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-buildah-agent ./containers/agents/build/buildah
-
-# --- Cleanup Existing Container ---
-if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
-    echo "Stopping and removing existing jenkins-controller..."
-    podman stop jenkins-controller
-    podman rm jenkins-controller
-    podman volume rm jenkins_home
-fi
-
-# --- Verify Built Images ---
-echo "Verifying built images..."
+# --- Verify Required Images ---
+echo "Verifying required images..."
 REQUIRED_IMAGES=(
     "ceph-jenkins-controller:latest"
     "ceph-jenkins-seed-agent:latest"
@@ -101,19 +47,27 @@ REQUIRED_IMAGES=(
 MISSING=()
 
 for img in "${REQUIRED_IMAGES[@]}"; do
-        if ! podman image exists "$img"; then
-            echo " [MISSING] $img"
-            MISSING+=("$img")
-        else
-            echo " [OK] $img"
-        fi
+    if ! podman image exists "$img"; then
+        echo " [MISSING] $img"
+        MISSING+=("$img")
+    else
+        echo " [OK] $img"
+    fi
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
-        echo "One or more required images are missing. Build may have failed."
-        echo "Missing images: ${MISSING[*]}"
-        echo "Inspect build output above for errors."
-        exit 1
+    echo "One or more required images are missing."
+    echo "Missing images: ${MISSING[*]}"
+    echo "Run ./deploy/images/create-images.sh first."
+    exit 1
+fi
+
+# --- Cleanup Existing Container ---
+if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
+    echo "Stopping and removing existing jenkins-controller..."
+    podman stop jenkins-controller
+    podman rm jenkins-controller
+    podman volume rm jenkins_home
 fi
 
 # --- Create Jenkins Home Volume ---
@@ -189,16 +143,16 @@ COUNT=0
 SUCCESS=false
 
 while [ $COUNT -lt $MAX_RETRIES ]; do
-    # Check for a 200 (Success) or 
+    # Check for a 200 (Success) or
     # 403 (Forbidden, indicating Jenkins is up but needs login)
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" $JENKINS_URL/login || echo "000")
-    
+
     if [ "$HTTP_STATUS" == "200" ] || [ "$HTTP_STATUS" == "403" ]; then
         echo " [OK] Jenkins is up and responding (Status: $HTTP_STATUS)."
         SUCCESS=true
         break
     fi
-    
+
     echo -n "."
     sleep $WAIT_INTERVAL
     ((COUNT++))
