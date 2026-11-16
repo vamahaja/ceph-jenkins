@@ -1,5 +1,5 @@
 # Official base jenkins LTS image
-FROM jenkins/jenkins:lts
+FROM jenkins/jenkins:lts-jdk25
 
 # Build Arguments
 ARG AGENT_UID=1000
