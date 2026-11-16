@@ -30,6 +30,9 @@ jenkins:
             value: "https://github.com/vamahaja/pulp-project.git"
 
 security:
+  # Enforce Content Security Policy
+  contentSecurityPolicy:
+    enforce: true
   globalJobDslSecurityConfiguration:
     # Allow Job DSL to run without manual script approval.
     useScriptSecurity: false

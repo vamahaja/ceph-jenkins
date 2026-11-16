@@ -1,5 +1,4 @@
 ansicolor
-blueocean
 conditional-buildstep
 configuration-as-code
 docker-commons
