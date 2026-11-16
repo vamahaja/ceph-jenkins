@@ -2,9 +2,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 # --- Default Configuration ---
 JENKINS_CONFIG_DIR="$HOME/jenkins_config"
 JENKINS_PROPERTIES="$JENKINS_CONFIG_DIR/properties.yaml"
+CASC_BASE="${REPO_ROOT}/casc/base.yaml"
+CASC_CLOUDS="${REPO_ROOT}/casc/clouds-podman.yaml"
+SEED_GROOVY="${REPO_ROOT}/jobs/seed.groovy"
 
 # --- Volume Configuration ---
 SHARED_WORKSPACE_VOLUME="jenkins_shared_workspace"
@@ -24,10 +30,24 @@ if [ ! -f "$JENKINS_PROPERTIES" ]; then
     exit 1
 fi
 
+# --- Check Casc and seed files ---
+for required in "$CASC_BASE" "$CASC_CLOUDS" "$SEED_GROOVY"; do
+    if [ ! -f "$required" ]; then
+        echo "Required file does not exist: $required"
+        exit 1
+    fi
+done
+
 # --- Podman Configuration ---
 SOCKET_PATH="/run/user/$(id -u)/podman/podman.sock"
-SOCKET_GID=$(stat -c '%g' "$SOCKET_PATH")
 JENKINS_URL="http://localhost:8080"
+
+if [ ! -S "$SOCKET_PATH" ]; then
+    echo "Podman user socket not found: $SOCKET_PATH"
+    echo "Enable it with: systemctl --user enable --now podman.socket"
+    exit 1
+fi
+SOCKET_GID=$(stat -c '%g' "$SOCKET_PATH")
 
 echo "--- Initializing Deployment for Ceph-Jenkins ---"
 echo "Detected Socket GID: $SOCKET_GID"
@@ -62,12 +82,11 @@ if [ ${#MISSING[@]} -gt 0 ]; then
     exit 1
 fi
 
-# --- Cleanup Existing Container ---
+# --- Cleanup Existing Container (preserve jenkins_home volume/data) ---
 if [ "$(podman ps -aq -f name=jenkins-controller)" ]; then
     echo "Stopping and removing existing jenkins-controller..."
     podman stop jenkins-controller
     podman rm jenkins-controller
-    podman volume rm jenkins_home
 fi
 
 # --- Create Jenkins Home Volume ---
@@ -113,13 +132,15 @@ podman run -d \
        -Djenkins.install.runSetupWizard=false \
        -Djava.awt.headless=true \
        -Dcasc.jenkins.config=/var/jenkins_home/casc_configs/" \
-    -v $JENKINS_HOME_VOLUME:/var/jenkins_home \
-    -v $(pwd)/casc.yaml:/var/jenkins_home/casc_configs/01-casc.yaml:z \
-    -v $JENKINS_CONFIG_DIR/properties.yaml:/var/jenkins_home/casc_configs/02-properties.yaml:z \
-    -v $(pwd)/jobs/seed.groovy:/var/jenkins_home/seed.groovy:z \
-    -v $SOCKET_PATH:/var/run/podman.sock:z \
+    -v $JENKINS_HOME_VOLUME:/var/jenkins_home:z \
+    -v "$CASC_BASE":/var/jenkins_home/casc_configs/01-base.yaml:z \
+    -v "$CASC_CLOUDS":/var/jenkins_home/casc_configs/02-clouds.yaml:z \
+    -v $JENKINS_CONFIG_DIR/properties.yaml:/var/jenkins_home/casc_configs/03-properties.yaml:z \
+    -v "$SEED_GROOVY":/var/jenkins_home/seed.groovy:z \
+    -v $SOCKET_PATH:/var/run/podman.sock \
     --group-add $SOCKET_GID \
     --userns=keep-id \
+    --security-opt label=disable \
     ceph-jenkins-controller:latest
 
 # --- Health Check Step ---
@@ -155,7 +176,7 @@ while [ $COUNT -lt $MAX_RETRIES ]; do
 
     echo -n "."
     sleep $WAIT_INTERVAL
-    ((COUNT++))
+    COUNT=$((COUNT + 1))
 done
 
 if [ "$SUCCESS" = false ]; then

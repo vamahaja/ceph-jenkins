@@ -14,62 +14,29 @@ Before deploying the containerized controller, ensure the following requirements
     * `deploy/images`: Custom Jenkins controller & agent image definitions (Containerfiles).
     * `deploy/images/create-images.sh`: Builds controller and agent images.
     * `deploy/images/controller/plugins.txt`: Lists all required plugins.
-    * `deploy/podman`: Podman deployment scripts.
-    * `deploy/podman/deploy-containers.sh`: Deploys the Jenkins controller container.
-    * `casc.yaml`: Defines system-level configurations.
+    * `deploy/podman`: Podman deployment ([`deploy/podman/README.md`](deploy/podman/README.md)).
+    * `casc/base.yaml`: Shared JCasC (security, Job DSL, seed, UI).
+    * `casc/clouds-podman.yaml`: Podman/Docker agent cloud used by Podman deploy.
     * `properties.yaml`: Actual environment configurations.
     * `jobs/seed.groovy`: The initial script to bootstrap the job-processing logic.
     * `$HOME/jenkins_config`: Jenkins configs (properties.yaml, jenkins_home & shared_workspace)
 
-### Deployment Steps
+### Deployment (Podman)
 
-Deployment follows "Configuration as Code" workflow to maintain the repository as the single source of truth.
+Full host setup, Casc mounts, image list, and verify steps: [`deploy/podman/README.md`](deploy/podman/README.md).
 
-1. **Create Config Directory**: Create Jenkins home directory for Jenkins config and shared workspace
-    ```sh
-    mkdir -p $HOME/jenkins_config
-    ```
+```sh
+mkdir -p $HOME/jenkins_config
+# Copy and edit properties.yaml into $HOME/jenkins_config/properties.yaml
+systemctl --user enable --now podman.socket
+sudo loginctl enable-linger $(id -u)
+./deploy/images/create-images.sh
+./deploy/podman/deploy-containers.sh
+```
 
-2. **Create Properties:** Create `$HOME/jenkins_config/properties.yaml` with your real-world Jenkins configs. This "hydrates" the `casc.yaml` template with your actual cluster details and secrets.
-
-3. **Start socket service:** This will enable and start the socket for user.
-    ```sh
-    systemctl --user enable --now podman.socket
-    ```
-
-4. **Verify socket exists:** Verify the socket now exists for user id.
-    ```sh
-    ls -l /run/user/$(id -u)/podman/podman.sock
-    ```
-
-5. **Enable "Linger":** This will keep services running after user logout.
-    ```sh
-    sudo loginctl enable-linger $(id -u)
-    ```
-
-6. **Set Execute Permissions:** Set execute permissions on the deploy scripts.
-    ```sh
-    chmod +x ./deploy/images/create-images.sh ./deploy/podman/deploy-containers.sh
-    ```
-
-7. **Create Images:** Build controller and agent images.
-    ```sh
-    ./deploy/images/create-images.sh
-    ```
-
-8. **Deploy Containers:** Deploy the `jenkins-controller` container.
-    ```sh
-    ./deploy/podman/deploy-containers.sh
-    ```
-
-9. **Bootstrap Jobs:** Upon startup, JCasC will automatically execute `seed.groovy` to create the `Seed Job` job.
-
-10. **Process Project Jobs:** Run the `Seed` from the Jenkins UI, providing the relative path to your project's Groovy definitions to generate project-specific pipelines.
+Login at http://localhost:8080. JCasC runs `seed.groovy` on startup; run the Seed job from the UI to generate project pipelines.
 
 ### Logging
 
-The Ceph Jenkins environment utilizes multiple logging layers to ensure visibility across the "controller/builder" architecture.
-
-* **Controller Logs:** Monitor the startup and JCasC initialization via `podman logs -f jenkins-controller`.
-
-* **Builder Logs:** Detailed system logs are often captured during build execution using `journalctl`.
+* **Controller Logs:** `podman logs -f jenkins-controller`
+* **Builder Logs:** Often via `journalctl` on the host during agent builds
