@@ -65,7 +65,7 @@ spec:
               subPath: seed.groovy
               readOnly: true
             - name: shared-workspace
-              mountPath: /home/jenkins/workspace
+              mountPath: /workspace
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           # TCP probes: /login may return 403 (auth required), which fails httpGet

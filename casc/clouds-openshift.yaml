@@ -7,8 +7,9 @@
 # label-only pipelines run build steps in the Ceph agent image.
 #
 # jnlp workingDir is /tmp because OpenShift assigns a random UID;
-# jenkins/inbound-agent's default /home/jenkins/agent is not writable.
-# Build agents use the mandatory shared-workspace PVC at /home/jenkins/workspace.
+# jenkins/inbound-agent's /home/jenkins is mode 700 so paths under it are
+# unreachable. Mount the shared-workspace PVC at /workspace (not under
+# /home/jenkins) so jnlp FilePath ops (checkout) and builder steps can both write.
 jenkins:
   clouds:
     - kubernetes:
@@ -57,7 +58,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-fedora39-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 command: "sleep"
                 args: "99d"
@@ -67,12 +68,15 @@ jenkins:
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false
           - name: "ceph-build-centos9-agent"
             label: "ceph-build-centos9-agent"
@@ -89,7 +93,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-centos9-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 privileged: true
                 command: "sleep"
@@ -105,7 +109,7 @@ jenkins:
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false
           - name: "ceph-build-rocky10-agent"
             label: "ceph-build-rocky10-agent"
@@ -122,7 +126,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-rocky10-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 privileged: true
                 command: "sleep"
@@ -138,7 +142,7 @@ jenkins:
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false
           - name: "ceph-build-ubuntu-noble-agent"
             label: "ceph-build-ubuntu-noble-agent"
@@ -155,7 +159,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-noble-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 privileged: true
                 command: "sleep"
@@ -171,7 +175,7 @@ jenkins:
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false
           - name: "ceph-build-ubuntu-jammy-agent"
             label: "ceph-build-ubuntu-jammy-agent"
@@ -188,7 +192,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-jammy-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 privileged: true
                 command: "sleep"
@@ -204,7 +208,7 @@ jenkins:
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false
           - name: "ceph-build-buildah-agent"
             label: "ceph-build-buildah-agent"
@@ -221,7 +225,7 @@ jenkins:
                 resourceLimitMemory: "512Mi"
               - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-buildah-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
+                workingDir: "/workspace"
                 ttyEnabled: true
                 command: "sleep"
                 args: "99d"
@@ -233,5 +237,5 @@ jenkins:
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
+                  mountPath: "/workspace"
                   readOnly: false

@@ -47,8 +47,10 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Set up the working directory and ownership
+# OpenShift random UID needs /home/jenkins traversable for the shared-workspace PVC.
 WORKDIR /home/${USER_NAME}
-RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME}
+RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME} && \
+    chmod 755 /home/${USER_NAME}
 
 # Switch to the non-root user
 USER ${USER_NAME}

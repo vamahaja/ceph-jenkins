@@ -9,13 +9,14 @@ ARG USER_NAME=jenkins
 RUN sed -i 's/^mirrorlist=/#mirrorlist=/g' /etc/yum.repos.d/rocky*.repo && \
     sed -i 's|^#baseurl=http://dl.rockylinux.org/\$contentdir|baseurl=http://dl.rockylinux.org/pub/rocky|g' /etc/yum.repos.d/rocky*.repo
 
-# Install all required RPM build tools and pipeline dependencies
+# Install RPM build, flake on-host packaging (mock/hermetic), and pipeline deps.
 RUN dnf install --allowerasing -y \
     sudo \
     java-21-openjdk-devel \
     git \
     rsync \
     which \
+    wget \
     rpm-build \
     dnf-plugins-core \
     yum-utils \
@@ -28,7 +29,12 @@ RUN dnf install --allowerasing -y \
     cmake \
     cpio \
     jq \
-    curl && \
+    xz \
+    tar \
+    gzip \
+    createrepo_c \
+    podman \
+    skopeo && \
     dnf clean all
 
 # Install Pulp CLI for artifact uploads
@@ -37,17 +43,27 @@ RUN pip3 install pulp-cli pulp-cli-deb
 # Enable CRB and EPEL repositories for Ceph build dependencies
 RUN dnf -y install epel-release dnf-plugins-core && \
     /usr/bin/crb enable && \
-    dnf -y install javapackages-tools python3-cython && \
+    dnf -y install javapackages-tools python3-cython mock && \
     dnf clean all
 
 # Create the Jenkins user and group to match the host
 RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     useradd -u ${USER_ID} -g ${GROUP_ID} -m ${USER_NAME} && \
-    echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    (getent group mock >/dev/null && usermod -a -G mock ${USER_NAME} || true)
 
-# Set up the working directory and ownership
+# Nix flakes for on-host flake packaging
+COPY install-nix.sh /tmp/install-nix.sh
+RUN chmod +x /tmp/install-nix.sh && \
+    NIX_CHOWN_USER=${USER_NAME} /tmp/install-nix.sh && \
+    rm -f /tmp/install-nix.sh
+ENV PATH="/nix/var/nix/profiles/default/bin:${PATH}"
+
+# Set up the working directory and ownership.
+# OpenShift random UID needs /home/jenkins traversable for the shared-workspace PVC.
 WORKDIR /home/${USER_NAME}
-RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME}
+RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME} && \
+    chmod 755 /home/${USER_NAME}
 
 # Switch to the non-root user
 USER ${USER_NAME}

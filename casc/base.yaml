@@ -31,7 +31,7 @@ jenkins:
           - key: "SHAMAN_CEPH_REPO_URL"
             value: "https://shaman.ceph.com/r/ceph"
           - key: "SHARED_WORKSPACE"
-            value: "/home/jenkins/workspace"
+            value: "/workspace"
 
 security:
   # Enforce Content Security Policy
@@ -50,11 +50,12 @@ security:
 unclassified:
   ansiColorBuildWrapper:
     globalColorMapName: "xterm"
-  # Shared library (repo-root vars/) for helpers (ceph.*, pulp.*, artifacts.*, containers.*, nix.*).
+  # Shared library (repo-root vars/) for helpers
+  # (ceph.*, distros.*, pulp.*, artifacts.*, containers.*, nix.*).
   globalLibraries:
     libraries:
       - name: "ceph-jenkins"
-        defaultVersion: "main"
+        defaultVersion: "nix-pipeline"
         implicit: false
         allowVersionOverride: true
         includeInChangesets: false

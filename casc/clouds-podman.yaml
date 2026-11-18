@@ -45,7 +45,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -67,7 +67,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -89,7 +89,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -111,7 +111,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -133,7 +133,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -153,7 +153,7 @@ jenkins:
               memoryLimit: 16384
               memorySwap: -1
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"

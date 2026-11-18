@@ -89,6 +89,10 @@ def publishDistroArtifacts(String flakeDistro, String flavor = "default") {
 }
 
 def distName(String flakeDistro) {
+    def cfg = distros.configs()[flakeDistro]
+    if (cfg?.name) {
+        return cfg.name
+    }
     if (flakeDistro.startsWith("centos")) {
         return "centos"
     }
@@ -102,6 +106,10 @@ def distName(String flakeDistro) {
 }
 
 def distVersion(String flakeDistro) {
+    def cfg = distros.configs()[flakeDistro]
+    if (cfg?.version) {
+        return "${cfg.version}"
+    }
     // Avoid java.util.Matcher in Pipeline CPS (not reliably serializable).
     def prefix = ["centos", "rocky", "fedora"].find { flakeDistro.startsWith(it) }
     if (!prefix) {

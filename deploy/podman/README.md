@@ -105,7 +105,7 @@ Login at [http://localhost:8080](http://localhost:8080).
 | Volume `jenkins_home` | `/var/jenkins_home` |
 | Host `podman.sock` | `/var/run/podman.sock` |
 
-Agent templates also use volume `jenkins_shared_workspace` at `/home/jenkins/workspace` inside build agents.
+Agent templates also use volume `jenkins_shared_workspace` at `/workspace` inside build agents.
 
 SELinux note: the controller runs with `--security-opt label=disable` so it can talk to the host socket. Jenkins home Casc mounts use `:z`.
 

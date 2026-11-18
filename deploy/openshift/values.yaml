@@ -57,7 +57,7 @@ persistence:
     storageClass: ""
     accessModes:
       - ReadWriteOnce
-  # Required RWX PVC mounted by build-agent templates at /home/jenkins/workspace.
+  # Required RWX PVC mounted by build-agent templates at /workspace.
   sharedWorkspace:
     size: 100Gi
     # Must support ReadWriteMany (multi-agent mounts).
