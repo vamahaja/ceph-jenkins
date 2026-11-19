@@ -1,0 +1,11 @@
+[ceph-x86_64]
+name=Ceph Packages - x86_64
+baseurl=@REPO_URL@x86_64/
+enabled=1
+gpgcheck=0
+
+[ceph-noarch]
+name=Ceph Packages - noarch
+baseurl=@REPO_URL@noarch/
+enabled=1
+gpgcheck=0

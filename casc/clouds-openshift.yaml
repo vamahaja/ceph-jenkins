@@ -91,6 +91,7 @@ jenkins:
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-centos9-agent:__AGENT_IMAGE_TAG__"
                 workingDir: "/home/jenkins/workspace"
                 ttyEnabled: true
+                privileged: true
                 command: "sleep"
                 args: "99d"
                 resourceRequestCpu: "2"
@@ -123,6 +124,7 @@ jenkins:
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-rocky10-agent:__AGENT_IMAGE_TAG__"
                 workingDir: "/home/jenkins/workspace"
                 ttyEnabled: true
+                privileged: true
                 command: "sleep"
                 args: "99d"
                 resourceRequestCpu: "2"
@@ -155,6 +157,7 @@ jenkins:
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-noble-agent:__AGENT_IMAGE_TAG__"
                 workingDir: "/home/jenkins/workspace"
                 ttyEnabled: true
+                privileged: true
                 command: "sleep"
                 args: "99d"
                 resourceRequestCpu: "2"
@@ -187,6 +190,7 @@ jenkins:
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-jammy-agent:__AGENT_IMAGE_TAG__"
                 workingDir: "/home/jenkins/workspace"
                 ttyEnabled: true
+                privileged: true
                 command: "sleep"
                 args: "99d"
                 resourceRequestCpu: "2"

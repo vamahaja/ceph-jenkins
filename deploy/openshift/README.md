@@ -125,7 +125,7 @@ helm upgrade --install ceph-jenkins ./deploy/openshift \
 
 Templates use a `jnlp` sidecar plus a `builder` container, with **`agentContainer: builder`**, so existing pipelines that only set `agent { label 'ceph-build-...' }` run steps in the Ceph agent image. `jnlp` uses `workingDir: /tmp` (OpenShift random UID cannot write `/home/jenkins/agent`); builders use the shared-workspace PVC at `/home/jenkins/workspace`.
 
-Agent pods use the chart ServiceAccount (via `__JENKINS_SERVICE_ACCOUNT__` in Casc), not `default`. The `ceph-build-buildah-agent` template requests a **privileged** builder container — grant an SCC that allows privileged pods to that ServiceAccount, or avoid that agent label on restricted clusters:
+Agent pods use the chart ServiceAccount (via `__JENKINS_SERVICE_ACCOUNT__` in Casc), not `default`. CentOS, Rocky, Ubuntu, and buildah builders are **privileged** (`sudo` package installs, or buildah). Grant an SCC that allows privileged pods to that ServiceAccount, or avoid those labels on restricted clusters:
 
 ```sh
 oc adm policy add-scc-to-user privileged -z ceph-jenkins -n ceph-jenkins

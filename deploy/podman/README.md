@@ -36,6 +36,20 @@ Uses shared Casc from [`casc/base.yaml`](../../casc/base.yaml) plus Podman agent
    ls -l /run/user/$(id -u)/podman/podman.sock
    ```
 
+   Keep the API process alive (default ~5s idle exit causes Jenkins `Broken pipe` while provisioning agents). `deploy-containers.sh` installs this drop-in automatically:
+
+   ```sh
+   mkdir -p ~/.config/systemd/user/podman.service.d
+   cat > ~/.config/systemd/user/podman.service.d/linger-api.conf <<'EOF'
+   [Service]
+   ExecStart=
+   ExecStart=/usr/bin/podman $LOGGING system service --time=0
+   EOF
+   systemctl --user daemon-reload
+   systemctl --user restart podman.socket
+   systemctl --user start podman.service
+   ```
+
 3. **Linger** (keeps the socket and containers alive after logout)
 
    ```sh
