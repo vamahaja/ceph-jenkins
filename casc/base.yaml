@@ -28,6 +28,10 @@ jenkins:
         env:
           - key: "PULP_PROJECT_REPO"
             value: "https://github.com/vamahaja/pulp-project.git"
+          - key: "SHAMAN_CEPH_REPO_URL"
+            value: "https://shaman.ceph.com/r/ceph"
+          - key: "SHARED_WORKSPACE"
+            value: "/home/jenkins/workspace"
 
 security:
   # Enforce Content Security Policy
@@ -46,6 +50,21 @@ security:
 unclassified:
   ansiColorBuildWrapper:
     globalColorMapName: "xterm"
+  # Shared library (repo-root vars/) for helpers (ceph.*, pulp.*, artifacts.*, containers.*, nix.*).
+  globalLibraries:
+    libraries:
+      - name: "ceph-jenkins"
+        defaultVersion: "main"
+        implicit: false
+        allowVersionOverride: true
+        includeInChangesets: false
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/vamahaja/ceph-jenkins.git"
+                traits:
+                  - "gitBranchDiscovery"
 
 # Pipeline Graph View configuration
 appearance:

@@ -49,6 +49,28 @@ if [ ! -S "$SOCKET_PATH" ]; then
 fi
 SOCKET_GID=$(stat -c '%g' "$SOCKET_PATH")
 
+# Default podman.service exits after ~5s idle; Jenkins docker-plugin then hits
+# Broken pipe on pooled unix-socket connections and fails to provision agents.
+ensure_podman_api_linger() {
+    local drop_in_dir="$HOME/.config/systemd/user/podman.service.d"
+    local drop_in="$drop_in_dir/linger-api.conf"
+    if [ ! -f "$drop_in" ] || ! grep -q -- '--time=0' "$drop_in"; then
+        echo "Configuring podman.service to keep API alive (--time=0)..."
+        mkdir -p "$drop_in_dir"
+        cat > "$drop_in" <<'EOF'
+[Service]
+# Jenkins docker-plugin pools unix-socket connections; default 5s idle exit causes Broken pipe.
+ExecStart=
+ExecStart=/usr/bin/podman $LOGGING system service --time=0
+EOF
+        systemctl --user daemon-reload
+    fi
+    systemctl --user enable --now podman.socket >/dev/null
+    systemctl --user start podman.service >/dev/null || true
+}
+
+ensure_podman_api_linger
+
 echo "--- Initializing Deployment for Ceph-Jenkins ---"
 echo "Detected Socket GID: $SOCKET_GID"
 
@@ -104,11 +126,22 @@ else
 fi
 
 # --- Create Shared Workspace Volume ---
+# Rootless Podman maps container UID 1000 != host UID. A host-owned workspace
+# appears as root inside agents (AccessDenied). Align ownership in the user
+# namespace; agents also use securityOpts label=disable (casc/clouds-podman.yaml).
+ensure_shared_workspace_perms() {
+    mkdir -p "$SHARED_WORKSPACE_PATH"
+    podman unshare chown 1000:1001 "$SHARED_WORKSPACE_PATH"
+    podman unshare chmod 775 "$SHARED_WORKSPACE_PATH"
+}
+
 if podman volume exists jenkins_shared_workspace 2>/dev/null; then
     echo "Shared workspace volume already exists."
+    echo "Ensuring shared workspace permissions for rootless agents..."
+    ensure_shared_workspace_perms
 else
     echo "Creating shared workspace directory..."
-    mkdir -p "$SHARED_WORKSPACE_PATH"
+    ensure_shared_workspace_perms
 
     echo "Creating shared workspace volume..."
     podman volume create jenkins_shared_workspace \
