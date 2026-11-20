@@ -103,7 +103,14 @@ def makeDist(String cephDir = null) {
         ).trim()
         // Match build-driver ceph_rpm_version() so Stage 2 reuses this tarball.
         def described = sh(
-            script: "git describe --match 'v*'",
+            script: '''
+                set -e
+                if ! git describe --match 'v*' >/dev/null 2>&1; then
+                    echo "No local v* tags; fetching from upstream ceph/ceph"
+                    git fetch --tags https://github.com/ceph/ceph.git
+                fi
+                git describe --match 'v*'
+            ''',
             returnStdout: true
         ).trim()
         env.CEPH_VERSION = described.replaceFirst(/^v/, "")

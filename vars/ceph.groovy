@@ -100,9 +100,18 @@ def checkoutRepo(
             script: "git submodule status --recursive",
             label: "Verify submodules"
         )
+        // Forks often omit release tags; RPM versioning needs git describe --match 'v*'.
         sh(
-            script: "git fetch --tags --unshallow || git fetch --tags",
-            label: "Fetch all tags"
+            script: '''
+                set -e
+                git fetch --tags --unshallow || git fetch --tags || true
+                if ! git describe --match 'v*' >/dev/null 2>&1; then
+                    echo "No local v* tags; fetching from upstream ceph/ceph"
+                    git fetch --tags https://github.com/ceph/ceph.git
+                fi
+                git describe --match 'v*'
+            ''',
+            label: "Fetch version tags"
         )
     }
 }
