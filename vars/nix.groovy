@@ -112,10 +112,12 @@ def makeDist(String cephDir = null) {
         echo "Shared make-dist via flake (CEPH_VERSION=${env.CEPH_VERSION})"
         // Nix lives in builder; default sh runs in jnlp (no /nix).
         ceph.withBuilder {
-            withNixPath {
-                sh "${nixBin()} --version"
-                withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
-                    sh "${nixBin()} develop .#packages -c ./make-dist \"\$CEPH_VERSION\""
+            ceph.withNixState {
+                withNixPath {
+                    sh "${nixBin()} --version"
+                    withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
+                        sh "${nixBin()} develop .#packages -c ./make-dist \"\$CEPH_VERSION\""
+                    }
                 }
             }
         }
@@ -151,10 +153,12 @@ def runOnHostPackaging(String distro, String modeArgs) {
 
     // Workspace tree has .git; on-host skips nested thin-image podman.
     ceph.withBuilder {
-        withNixPath {
-            sh "command -v mock"
-            withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
-                sh "${nixBin()} develop .#packages -c ./nix/build-driver.sh ${distro} ${modeArgs}"
+        ceph.withNixState {
+            withNixPath {
+                sh "command -v mock"
+                withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
+                    sh "${nixBin()} develop .#packages -c ./nix/build-driver.sh ${distro} ${modeArgs}"
+                }
             }
         }
     }

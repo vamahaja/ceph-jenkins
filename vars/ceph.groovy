@@ -43,6 +43,21 @@ def withBuilder(Closure body) {
     }
 }
 
+// OpenShift random UIDs cannot chmod image-owned /nix/var/nix/profiles/per-user.
+// Point Nix state (profiles, db, gcroots) at the writable shared workspace.
+def nixStateDir() {
+    def root = env.SHARED_WS ?: env.HOME ?: "/tmp"
+    return "${root}/.nix-state"
+}
+
+def withNixState(Closure body) {
+    def stateDir = nixStateDir()
+    withEnv(["NIX_STATE_DIR=${stateDir}"]) {
+        sh "mkdir -p '${stateDir}'"
+        body()
+    }
+}
+
 def checkoutRepo(
     String cephDir = null,
     String repoUrl = null,
