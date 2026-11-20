@@ -109,6 +109,14 @@ def makeDist(String cephDir = null) {
         env.CEPH_VERSION = described.replaceFirst(/^v/, "")
         env.VERSION = env.CEPH_VERSION
 
+        if (!fileExists("flake.nix")) {
+            error(
+                "No flake.nix in ${targetDir}. " +
+                "Point CEPH_REPO/CEPH_BRANCH at a tree that includes the packaging flake " +
+                "(e.g. https://github.com/vamahaja/ceph.git @ nix-build)."
+            )
+        }
+
         echo "Shared make-dist via flake (CEPH_VERSION=${env.CEPH_VERSION})"
         // Nix lives in builder; default sh runs in jnlp (no /nix).
         ceph.withBuilder {

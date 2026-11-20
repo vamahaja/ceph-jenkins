@@ -17,9 +17,15 @@ pipelineJob("ceph-nix-build-pipeline") {
 
         parameters {
             stringParam(
-                "CEPH_REPO", "https://github.com/ceph/ceph.git", "Ceph repository URL"
+                "CEPH_REPO",
+                "https://github.com/vamahaja/ceph.git",
+                "Ceph repository URL (needs flake.nix)"
             )
-            stringParam("CEPH_BRANCH", "main", "Ceph branch to build")
+            stringParam(
+                "CEPH_BRANCH",
+                "nix-build",
+                "Ceph branch with flake.nix (e.g. nix-build)"
+            )
             stringParam(
                 "DISTRO",
                 "centos9 rocky10",
