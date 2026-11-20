@@ -13,8 +13,7 @@ def makeDistAgent() {
     return "ceph-build-fedora39-agent"
 }
 
-// Kubernetes agents inherit PATH from the jnlp container (no Nix). Always prepend
-// the image Nix profile for builder `sh` steps.
+// Builder PATH may omit the image Nix profile under remoting; prepend it.
 def withNixPath(Closure body) {
     def basePath = env.PATH ?: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     def nixPath = nixProfileBin()
@@ -111,11 +110,13 @@ def makeDist(String cephDir = null) {
         env.VERSION = env.CEPH_VERSION
 
         echo "Shared make-dist via flake (CEPH_VERSION=${env.CEPH_VERSION})"
-        withNixPath {
-            // Absolute path: build env PATH comes from jnlp and omits Nix.
-            sh "${nixBin()} --version"
-            withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
-                sh "${nixBin()} develop .#packages -c ./make-dist \"\$CEPH_VERSION\""
+        // Nix lives in builder; default sh runs in jnlp (no /nix).
+        ceph.withBuilder {
+            withNixPath {
+                sh "${nixBin()} --version"
+                withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
+                    sh "${nixBin()} develop .#packages -c ./make-dist \"\$CEPH_VERSION\""
+                }
             }
         }
         def tarball = "ceph-${env.CEPH_VERSION}.tar.bz2"
@@ -149,10 +150,12 @@ def runOnHostPackaging(String distro, String modeArgs) {
     }
 
     // Workspace tree has .git; on-host skips nested thin-image podman.
-    withNixPath {
-        sh "command -v mock"
-        withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
-            sh "${nixBin()} develop .#packages -c ./nix/build-driver.sh ${distro} ${modeArgs}"
+    ceph.withBuilder {
+        withNixPath {
+            sh "command -v mock"
+            withEnv(["CEPH_VERSION=${env.CEPH_VERSION}"]) {
+                sh "${nixBin()} develop .#packages -c ./nix/build-driver.sh ${distro} ${modeArgs}"
+            }
         }
     }
 }
@@ -173,32 +176,34 @@ def collectArtifacts(String distro) {
     def outDir = "${artifactsDir}/${distro}"
     def rpmbuild = "${cephDir}/rpmbuild"
 
-    ["x86_64", "noarch", "SRPMS", "hermetic"].each { subdir ->
-        sh "mkdir -p '${outDir}/${subdir}'"
-    }
+    ceph.withBuilder {
+        ["x86_64", "noarch", "SRPMS", "hermetic"].each { subdir ->
+            sh "mkdir -p '${outDir}/${subdir}'"
+        }
 
-    syncDir("${rpmbuild}/RPMS/x86_64", "${outDir}/x86_64")
-    syncDir("${rpmbuild}/RPMS/noarch", "${outDir}/noarch")
-    syncDir("${rpmbuild}/SRPMS", "${outDir}/SRPMS")
+        syncDir("${rpmbuild}/RPMS/x86_64", "${outDir}/x86_64")
+        syncDir("${rpmbuild}/RPMS/noarch", "${outDir}/noarch")
+        syncDir("${rpmbuild}/SRPMS", "${outDir}/SRPMS")
 
-    // mock --resultdir often drops RPMs directly under rpmbuild/
-    if (fileExists(rpmbuild)) {
-        dir(rpmbuild) {
-            findFiles(glob: "*.rpm").each { f ->
-                def dest = f.name.endsWith(".src.rpm") \
-                    ? "${outDir}/SRPMS" : "${outDir}/x86_64"
-                sh "cp -f '${f.name}' '${dest}/'"
+        // mock --resultdir often drops RPMs directly under rpmbuild/
+        if (fileExists(rpmbuild)) {
+            dir(rpmbuild) {
+                findFiles(glob: "*.rpm").each { f ->
+                    def dest = f.name.endsWith(".src.rpm") \
+                        ? "${outDir}/SRPMS" : "${outDir}/x86_64"
+                    sh "cp -f '${f.name}' '${dest}/'"
+                }
             }
         }
-    }
 
-    if (fileExists(cephDir)) {
-        dir(cephDir) {
-            findFiles(glob: "ceph-*.src.rpm").each { f ->
-                sh "cp -f '${f.name}' '${outDir}/SRPMS/'"
+        if (fileExists(cephDir)) {
+            dir(cephDir) {
+                findFiles(glob: "ceph-*.src.rpm").each { f ->
+                    sh "cp -f '${f.name}' '${outDir}/SRPMS/'"
+                }
             }
         }
-    }
 
-    syncDir("${rpmbuild}/hermetic/${distro}", "${outDir}/hermetic")
+        syncDir("${rpmbuild}/hermetic/${distro}", "${outDir}/hermetic")
+    }
 }

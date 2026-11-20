@@ -31,6 +31,18 @@ def initEnv() {
     env.PULP_PROJECT_DIR = "${env.SHARED_WS}/pulp-project"
 }
 
+// OpenShift agents: remoting is jnlp; Nix/build tools are in builder. Podman is
+// single-container, so container('builder') is skipped there.
+def withBuilder(Closure body) {
+    if (fileExists("/var/run/secrets/kubernetes.io/serviceaccount/namespace")) {
+        container("builder") {
+            body()
+        }
+    } else {
+        body()
+    }
+}
+
 def checkoutRepo(
     String cephDir = null,
     String repoUrl = null,

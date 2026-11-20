@@ -3,8 +3,10 @@
 # Helm substitutes release-scoped placeholders for namespace, Service name,
 # ServiceAccount, shared-workspace PVC claim, agent image prefix/tag, and optional pull secrets.
 #
-# Templates use jnlp + builder with agentContainer: builder so existing
-# label-only pipelines run build steps in the Ceph agent image.
+# Templates use a jnlp remoting sidecar plus a builder tools container. Shell steps
+# default to jnlp; pipelines/shared-lib helpers must use container('builder') for
+# Nix and build tools. (agentInjection is unsuitable here: its set-up-jenkins-agent
+# init container has no resources and fails ResourceQuota in this cluster.)
 #
 # jnlp workingDir is /tmp because OpenShift assigns a random UID;
 # jenkins/inbound-agent's /home/jenkins is mode 700 so paths under it are
@@ -22,7 +24,6 @@ jenkins:
         templates:
           - name: "ceph-seed-agent"
             label: "ceph-seed-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -45,7 +46,6 @@ jenkins:
                 resourceLimitMemory: "512Mi"
           - name: "ceph-build-fedora39-agent"
             label: "ceph-build-fedora39-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -80,7 +80,6 @@ jenkins:
                   readOnly: false
           - name: "ceph-build-centos9-agent"
             label: "ceph-build-centos9-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -104,6 +103,9 @@ jenkins:
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
             volumes:
@@ -113,7 +115,6 @@ jenkins:
                   readOnly: false
           - name: "ceph-build-rocky10-agent"
             label: "ceph-build-rocky10-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -137,6 +138,9 @@ jenkins:
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
             volumes:
@@ -146,7 +150,6 @@ jenkins:
                   readOnly: false
           - name: "ceph-build-ubuntu-noble-agent"
             label: "ceph-build-ubuntu-noble-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -170,6 +173,9 @@ jenkins:
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
             volumes:
@@ -179,7 +185,6 @@ jenkins:
                   readOnly: false
           - name: "ceph-build-ubuntu-jammy-agent"
             label: "ceph-build-ubuntu-jammy-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -203,6 +208,9 @@ jenkins:
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
             volumes:
@@ -212,7 +220,6 @@ jenkins:
                   readOnly: false
           - name: "ceph-build-buildah-agent"
             label: "ceph-build-buildah-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
@@ -234,6 +241,10 @@ jenkins:
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "HOME"
+                      value: "/workspace"
             volumes:
               - persistentVolumeClaim:
                   claimName: "__SHARED_WORKSPACE_CLAIM__"
