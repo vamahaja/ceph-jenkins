@@ -1,25 +1,20 @@
 // Global var `containers` from the ceph-jenkins shared library.
 
 
+// Shared distro identity from distros.*; overlay buildah-specific fields.
 def distroConfigs() {
     return [
-        centos9: [
+        centos9: distros.config("centos9") + [
             label    : "ceph-build-buildah-agent",
             fromImage: "quay.io/centos/centos:stream9",
-            name     : "centos",
-            version  : "9",
             arch     : "x86_64",
             baseos   : "centos-stream9",
-            display  : "CentOS 9.Stream",
         ],
-        rocky10: [
+        rocky10: distros.config("rocky10") + [
             label    : "ceph-build-buildah-agent",
             fromImage: "docker.io/rockylinux/rockylinux:10",
-            name     : "rocky",
-            version  : "10",
             arch     : "x86_64",
             baseos   : "rocky-10",
-            display  : "Rocky Linux 10",
         ],
     ]
 }
@@ -32,31 +27,17 @@ def config(String distro) {
     return cfg
 }
 
-def supportedArches() {
-    return ["x86_64"]
-}
-
-def skipUnsupportedArch(String distro, String archParam = null) {
-    def requested = archParam ?: params.ARCH
-    def arches = requested.tokenize()
-    if (arches.any { supportedArches().contains(it) }) {
-        return false
-    }
-    echo "Skipping ${distro}: ARCH=${requested} not supported yet"
-    return true
-}
-
 def buildSelected(String distroParam = null, String archParam = null) {
-    def distros = (distroParam ?: params.DISTRO).tokenize()
+    def selected = (distroParam ?: params.DISTRO).tokenize()
     def parallelStages = [:]
 
-    distros.each { d ->
+    selected.each { d ->
         def distro = d
         if (!distroConfigs().containsKey(distro)) {
             echo "Skipping ${distro}: no container image config"
             return
         }
-        if (skipUnsupportedArch(distro, archParam)) {
+        if (distros.skipUnsupportedArch(distro, archParam)) {
             return
         }
         def cfg = config(distro)

@@ -1,0 +1,90 @@
+@Library('ceph-jenkins') _
+
+// Flake RPM pipeline: existing distro agents; Nix runs on-host packaging (mock/hermetic).
+
+pipeline {
+    agent none
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: "20"))
+        skipDefaultCheckout()
+        timestamps()
+        ansiColor("xterm")
+    }
+
+    stages {
+        stage("Checkout and Prepare Source") {
+            agent {
+                node {
+                    label nix.makeDistAgent()
+                }
+            }
+
+            stages {
+                stage("Checkout Repositories") {
+                    steps {
+                        script {
+                            ceph.initEnv()
+                            nix.initEnv()
+                        }
+
+                        dir("${env.SHARED_WS}") {
+                            checkout scm
+                        }
+
+                        script {
+                            if (params.PUBLISH_ARTIFACTS) {
+                                pulp.checkoutProject()
+                            }
+                        }
+                    }
+                }
+
+                stage("Checkout Ceph Repository") {
+                    steps {
+                        script {
+                            ceph.checkoutRepo()
+                        }
+                    }
+                }
+
+                stage("Make Dist") {
+                    steps {
+                        script {
+                            nix.makeDist()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Build Artifacts") {
+            steps {
+                script {
+                    nix.buildSelected()
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            node(nix.makeDistAgent()) {
+                script {
+                    // Stage 1 may die before ceph.initEnv(); never NPE on SHARED_WS.
+                    def sharedWs = ceph.resolveSharedWorkspace()
+                    ws(sharedWs) {
+                        if (fileExists("artifacts")) {
+                            archiveArtifacts(
+                                artifacts: "artifacts/**", allowEmptyArchive: true
+                            )
+                        }
+                        sh "LC_ALL=C find '${sharedWs}' -depth -name '*[^[:print:]]*' -exec rm -rf {} + || true"
+                        echo "Cleaning up shared workspace ${sharedWs} ..."
+                        cleanWs(disableDeferredWipeout: true, deleteDirs: true)
+                    }
+                }
+            }
+        }
+    }
+}

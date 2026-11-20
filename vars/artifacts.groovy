@@ -2,46 +2,11 @@
 
 
 def distroConfigs() {
-    return [
-        centos9: [
-            label  : "ceph-build-centos9-agent",
-            kind   : "rpm",
-            name   : "centos",
-            version: "9",
-            display: "CentOS 9.Stream",
-        ],
-        rocky10: [
-            label  : "ceph-build-rocky10-agent",
-            kind   : "rpm",
-            name   : "rocky",
-            version: "10",
-            display: "Rocky Linux 10",
-        ],
-        jammy: [
-            label  : "ceph-build-ubuntu-jammy-agent",
-            kind   : "deb",
-            name   : "ubuntu",
-            version: "jammy",
-            arch   : "x86_64",
-            display: "Ubuntu 22.04 (jammy)",
-        ],
-        noble: [
-            label  : "ceph-build-ubuntu-noble-agent",
-            kind   : "deb",
-            name   : "ubuntu",
-            version: "noble",
-            arch   : "x86_64",
-            display: "Ubuntu 24.04 (noble)",
-        ],
-    ]
+    return distros.configs()
 }
 
 def config(String distro) {
-    def cfg = distroConfigs()[distro]
-    if (!cfg) {
-        error("No artifact config for DISTRO='${distro}'")
-    }
-    return cfg
+    return distros.config(distro)
 }
 
 def initEnv() {
@@ -61,31 +26,17 @@ def initEnv() {
     env.DEB_BUILD_OPTS = params.DEB_BUILD_OPTS ?: ""
 }
 
-def supportedArches() {
-    return ["x86_64"]
-}
-
-def skipUnsupportedArch(String distro, String archParam = null) {
-    def requested = archParam ?: params.ARCH
-    def arches = requested.tokenize()
-    if (arches.any { supportedArches().contains(it) }) {
-        return false
-    }
-    echo "Skipping ${distro}: ARCH=${requested} not supported yet"
-    return true
-}
-
 def buildSelected(String distroParam = null, String archParam = null) {
-    def distros = (distroParam ?: params.DISTRO).tokenize()
+    def selected = (distroParam ?: params.DISTRO).tokenize()
     def parallelStages = [:]
 
-    distros.each { d ->
+    selected.each { d ->
         def distro = d
         if (!distroConfigs().containsKey(distro)) {
             echo "Skipping ${distro}: no artifact config"
             return
         }
-        if (skipUnsupportedArch(distro, archParam)) {
+        if (distros.skipUnsupportedArch(distro, archParam)) {
             return
         }
         def cfg = config(distro)
