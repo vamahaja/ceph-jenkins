@@ -5,27 +5,33 @@ ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG USER_NAME=jenkins
 
-# Install all required RPM build tools and pipeline dependencies
+# Install RPM build, flake on-host packaging (mock/hermetic), and pipeline deps.
+# Prefer curl-minimal-compatible installs; avoid pulling full curl when possible.
 RUN dnf install --allowerasing -y \
     sudo \
     java-21-openjdk-devel \
     git \
     rsync \
     which \
+    wget \
     rpm-build \
     dnf-plugins-core \
     yum-utils \
     python3-devel \
     python3-pip \
     python3-setuptools \
-    git \
     gcc \
     gcc-c++ \
     make \
     cmake \
     cpio \
     jq \
-    curl && \
+    xz \
+    tar \
+    gzip \
+    createrepo_c \
+    podman \
+    skopeo && \
     dnf clean all
 
 # Install Pulp CLI for artifact uploads
@@ -34,19 +40,28 @@ RUN pip3 install pulp-cli pulp-cli-deb
 # Configure CentOS 9 Repositories for Ceph build dependencies
 RUN dnf -y copr enable ceph/el9 && \
     dnf config-manager --set-enabled crb && \
-    dnf -y install epel-next-release javapackages-tools python3-Cython
+    dnf -y install epel-next-release javapackages-tools python3-Cython && \
+    dnf -y install mock && \
+    dnf clean all
 
 # Create the Jenkins user and group to match the host
 RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     useradd -u ${USER_ID} -g ${GROUP_ID} -m ${USER_NAME} && \
-    echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    (getent group mock >/dev/null && usermod -a -G mock ${USER_NAME} || true)
+
+# Nix flakes for on-host flake packaging
+COPY install-nix.sh /tmp/install-nix.sh
+RUN chmod +x /tmp/install-nix.sh && \
+    NIX_CHOWN_USER=${USER_NAME} /tmp/install-nix.sh && \
+    rm -f /tmp/install-nix.sh
+ENV PATH="/nix/var/nix/profiles/default/bin:${PATH}"
 
 # Set up the working directory and ownership.
 # OpenShift random UID needs /home/jenkins traversable for the shared-workspace PVC.
 WORKDIR /home/${USER_NAME}
 RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME} && \
     chmod 755 /home/${USER_NAME}
-
 # Remoting launcher for OpenShift (pod command: jenkins-agent). Two files only;
 # the distro image stays the base. Podman keeps CMD bash and does not run this.
 COPY --from=docker.io/jenkins/inbound-agent:latest /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent

@@ -31,10 +31,42 @@ def initEnv() {
     env.PULP_PROJECT_DIR = "${env.SHARED_WS}/pulp-project"
 }
 
+// This pod's Jenkins workspace, on its own volume. Make-dist and Nix state
+// stay here; distro agents receive the tarball by stash.
+def usePodWorkspace() {
+    def root = pwd()
+    env.SHARED_WS = root
+    env.CEPH_DIR = "${root}/ceph"
+    env.ARTIFACTS_DIR = "${root}/artifacts"
+    env.PULP_PROJECT_DIR = "${root}/pulp-project"
+}
+
+// OpenShift and Podman agents are a single container (the distro image).
+// OpenShift names it jnlp and runs jenkins-agent; Podman attaches to bash.
+def withBuilder(Closure body) {
+    body()
+}
+
+// OpenShift random UIDs cannot chmod image-owned /nix/var/nix/profiles/per-user.
+// Point Nix state (profiles, db, gcroots) at this pod's workspace disk.
+def nixStateDir() {
+    def root = env.SHARED_WS ?: env.HOME ?: "/tmp"
+    return "${root}/.nix-state"
+}
+
+def withNixState(Closure body) {
+    def stateDir = nixStateDir()
+    withEnv(["NIX_STATE_DIR=${stateDir}"]) {
+        sh "mkdir -p '${stateDir}'"
+        body()
+    }
+}
+
 def checkoutRepo(
     String cephDir = null,
     String repoUrl = null,
-    String branch = null
+    String branch = null,
+    boolean resolveVersion = true
 ) {
     def targetDir = cephDir ?: env.CEPH_DIR
     def url = repoUrl ?: params.CEPH_REPO
@@ -73,11 +105,40 @@ def checkoutRepo(
             script: "git submodule status --recursive",
             label: "Verify submodules"
         )
-        sh(
-            script: "git fetch --tags --unshallow || git fetch --tags",
-            label: "Fetch all tags"
-        )
+        // Forks often omit release tags; RPM versioning needs git describe --match 'v*'.
+        // Packaging reuses the version from make-dist and skips this fetch.
+        if (resolveVersion) {
+            describeVersion()
+        }
     }
+}
+
+// Nearest ancestor v* tag. Fetch only those refs from ceph/ceph.
+// --tags walks submodule commits and fails when a nested pin (seastar/dpdk)
+// is not advertised by that submodule remote. v* refs are enough for describe;
+// other tags and submodule tags are not.
+def describeVersion() {
+    return sh(
+        script: '''
+            set -e
+            fetch_vtags() {
+                git fetch --no-recurse-submodules --filter=blob:none "$@" \
+                    '+refs/tags/v*:refs/tags/v*'
+            }
+            if git rev-parse --is-shallow-repository | grep -qx true; then
+                git fetch --no-recurse-submodules --filter=blob:none --unshallow origin \
+                    || git fetch --no-recurse-submodules --unshallow origin \
+                    || true
+            fi
+            if ! git describe --match 'v*' >/dev/null 2>&1; then
+                echo "No local v* tags; fetching v* tags from upstream ceph/ceph"
+                fetch_vtags https://github.com/ceph/ceph.git
+            fi
+            git describe --match 'v*'
+        ''',
+        label: "Fetch version tags",
+        returnStdout: true
+    ).trim()
 }
 
 // Set SHA1/VERSION and stage dist/ceph.spec + source tarball for RPM/DEB packaging.
