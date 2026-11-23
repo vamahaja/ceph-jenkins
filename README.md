@@ -61,7 +61,7 @@ Deploy the Jenkins controller to an OpenShift cluster with the Helm chart under 
 
 4. **Bootstrap Jobs:** Same as Podman — JCasC runs `seed.groovy` on startup.
 
-> **Notes:** OpenShift agents use `casc/clouds-openshift.yaml` (one container named `jnlp`, the distro image, `command: jenkins-agent`). The shared-workspace PVC is that container's workspace volume at `/workspace`. CentOS, Rocky, Ubuntu, and buildah agents need a privileged SCC. See [`deploy/openshift/README.md`](deploy/openshift/README.md).
+> **Notes:** OpenShift agents use `casc/clouds-openshift.yaml` (one container named `jnlp`, the distro image, `command: jenkins-agent`). Each build pod has its own 100Gi workspace volume at `/home/jenkins/workspace`. CentOS, Rocky, Ubuntu, and buildah agents need a privileged SCC. See [`deploy/openshift/README.md`](deploy/openshift/README.md).
 
 ### Logging
 

@@ -5,17 +5,16 @@
 #
 # Each template is one container named jnlp (the Kubernetes plugin default). The
 # image is the distro agent, which has jenkins-agent on PATH; command launches it.
-# Shell steps and checkout all run in that container. agentInjection is not
+# Shell steps, checkout, and Nix all run in that container. agentInjection is not
 # used: its set-up-jenkins-agent init container has no resources and fails
 # ResourceQuota in this cluster.
 #
-# Build-agent workingDir is /workspace. The shared-workspace PVC is the plugin
-# workspace volume mounted there (not an extra volume, and not under
-# /home/jenkins). The default emptyDir workspace volume would hide the PVC if
-# workingDir and the claim used the same path. HOME is /workspace because
-# OpenShift assigns a random UID with no /etc/passwd home.
-# The seed agent also uses HOME and workingDir /workspace, but no PVC: the
-# default emptyDir is private to that pod.
+# workingDir and HOME are /home/jenkins/workspace. The agent images make
+# /home/jenkins mode 755 so a random OpenShift UID can enter it. The plugin
+# mounts the workspace volume at workingDir.
+# Each build agent gets its own 100Gi ReadWriteOnce volume (dynamicPVC),
+# created and deleted with the pod. The seed agent keeps the default emptyDir.
+# Distro agents receive the make-dist tarball by stash, not a shared claim.
 jenkins:
   clouds:
     - kubernetes:
@@ -33,7 +32,7 @@ jenkins:
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-seed-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 resourceRequestCpu: "100m"
@@ -43,19 +42,19 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
           - name: "ceph-build-fedora39-agent"
             label: "ceph-build-fedora39-agent"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-fedora39-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 resourceRequestCpu: "2"
@@ -65,7 +64,7 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
                   - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
@@ -74,13 +73,13 @@ jenkins:
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-centos9-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 privileged: true
@@ -91,7 +90,7 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
                   - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
@@ -100,13 +99,13 @@ jenkins:
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-rocky10-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 privileged: true
@@ -117,7 +116,7 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
                   - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
@@ -126,13 +125,13 @@ jenkins:
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-noble-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 privileged: true
@@ -143,7 +142,7 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
                   - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
@@ -152,13 +151,13 @@ jenkins:
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-jammy-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 privileged: true
@@ -169,7 +168,7 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"
                   - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
@@ -178,13 +177,13 @@ jenkins:
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
-              persistentVolumeClaimWorkspaceVolume:
-                claimName: "__SHARED_WORKSPACE_CLAIM__"
-                readOnly: false
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
             containers:
               - name: "jnlp"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-buildah-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/workspace"
+                workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
                 privileged: true
@@ -195,4 +194,4 @@ jenkins:
                 envVars:
                   - envVar:
                       key: "HOME"
-                      value: "/workspace"
+                      value: "/home/jenkins/workspace"

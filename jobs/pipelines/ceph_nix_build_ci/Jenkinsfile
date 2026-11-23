@@ -1,0 +1,70 @@
+@Library('ceph-jenkins') _
+
+// Flake RPM pipeline: existing distro agents; Nix runs on-host packaging (mock/hermetic).
+
+pipeline {
+    agent none
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: "20"))
+        skipDefaultCheckout()
+        timestamps()
+        ansiColor("xterm")
+    }
+
+    stages {
+        stage("Checkout and Prepare Source") {
+            agent {
+                node {
+                    label nix.makeDistAgent()
+                }
+            }
+
+            stages {
+                stage("Checkout Repositories") {
+                    steps {
+                        script {
+                            // Pod disk, not the shared /workspace claim.
+                            ceph.usePodWorkspace()
+                            nix.initEnv()
+                        }
+
+                        checkout scm
+
+                        script {
+                            if (params.PUBLISH_ARTIFACTS) {
+                                pulp.checkoutProject()
+                            }
+                        }
+                    }
+                }
+
+                stage("Checkout Ceph Repository") {
+                    steps {
+                        script {
+                            ceph.checkoutRepo()
+                        }
+                    }
+                }
+
+                stage("Make Dist") {
+                    steps {
+                        script {
+                            // Stashes ceph-<version>.tar.bz2 for the distro agents.
+                            nix.makeDist()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Build Artifacts") {
+            steps {
+                script {
+                    // Each distro checks out its own tree and unstashes the tarball.
+                    nix.buildSelected()
+                }
+            }
+        }
+    }
+}
