@@ -51,11 +51,18 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Set up the working directory and ownership
+# OpenShift random UID needs /home/jenkins traversable for the shared-workspace PVC.
 WORKDIR /home/${USER_NAME}
-RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME}
+RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME} && \
+    chmod 755 /home/${USER_NAME}
+
+# Remoting launcher for OpenShift (pod command: jenkins-agent). Two files only;
+# the distro image stays the base. Podman keeps CMD bash and does not run this.
+COPY --from=docker.io/jenkins/inbound-agent:latest /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent
+COPY --from=docker.io/jenkins/inbound-agent:latest /usr/share/jenkins/agent.jar /usr/share/jenkins/agent.jar
 
 # Switch to the non-root user
 USER ${USER_NAME}
 
-# The entrypoint remains a shell to allow the Jenkins script to run
+# Podman attach keeps this shell as PID 1. OpenShift overrides command with jenkins-agent.
 CMD ["/bin/bash"]

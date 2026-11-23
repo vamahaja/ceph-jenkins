@@ -105,7 +105,7 @@ Login at [http://localhost:8080](http://localhost:8080).
 | Volume `jenkins_home` | `/var/jenkins_home` |
 | Host `podman.sock` | `/var/run/podman.sock` |
 
-Agent templates also use volume `jenkins_shared_workspace` at `/home/jenkins/workspace` inside build agents.
+Agent templates also use volume `jenkins_shared_workspace` at `/workspace` inside build agents. `remoteFs` stays `/home/jenkins`. The images contain `jenkins-agent` for OpenShift; Podman does not run it. Keep `CMD ["/bin/bash"]` and `tty: true` so the attach connector can exec its own remoting jar. An image entrypoint of `jenkins-agent` exits immediately because this connector does not set `JENKINS_SECRET`.
 
 SELinux note: the controller runs with `--security-opt label=disable` so it can talk to the host socket. Jenkins home Casc mounts use `:z`.
 

@@ -1,4 +1,10 @@
 # Podman/Docker cloud agents (requires host podman.sock mounted into the controller).
+#
+# Images include jenkins-agent for the OpenShift cloud. Podman does not run it:
+# the attach connector execs its own remoting jar and does not set JENKINS_SECRET.
+# Keep image CMD ["/bin/bash"] and tty: true. An entrypoint of jenkins-agent exits
+# immediately under this connector. remoteFs stays /home/jenkins (uid 1000);
+# do not set HOME=/workspace here. The shared tree is the volume at /workspace.
 jenkins:
   clouds:
     - docker:
@@ -45,7 +51,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -67,7 +73,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -89,7 +95,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -111,7 +117,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -133,7 +139,7 @@ jenkins:
               environment:
                 - "ALLOCATED_CPUS=4"
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"
@@ -153,7 +159,7 @@ jenkins:
               memoryLimit: 16384
               memorySwap: -1
               mounts:
-                - "type=volume,source=jenkins_shared_workspace,destination=/home/jenkins/workspace"
+                - "type=volume,source=jenkins_shared_workspace,destination=/workspace"
             connector:
               attach:
                 user: "jenkins"

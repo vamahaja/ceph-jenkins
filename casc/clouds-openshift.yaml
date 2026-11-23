@@ -3,12 +3,19 @@
 # Helm substitutes release-scoped placeholders for namespace, Service name,
 # ServiceAccount, shared-workspace PVC claim, agent image prefix/tag, and optional pull secrets.
 #
-# Templates use jnlp + builder with agentContainer: builder so existing
-# label-only pipelines run build steps in the Ceph agent image.
+# Each template is one container named jnlp (the Kubernetes plugin default). The
+# image is the distro agent, which has jenkins-agent on PATH; command launches it.
+# Shell steps and checkout all run in that container. agentInjection is not
+# used: its set-up-jenkins-agent init container has no resources and fails
+# ResourceQuota in this cluster.
 #
-# jnlp workingDir is /tmp because OpenShift assigns a random UID;
-# jenkins/inbound-agent's default /home/jenkins/agent is not writable.
-# Build agents use the mandatory shared-workspace PVC at /home/jenkins/workspace.
+# Build-agent workingDir is /workspace. The shared-workspace PVC is the plugin
+# workspace volume mounted there (not an extra volume, and not under
+# /home/jenkins). The default emptyDir workspace volume would hide the PVC if
+# workingDir and the claim used the same path. HOME is /workspace because
+# OpenShift assigns a random UID with no /etc/passwd home.
+# The seed agent also uses HOME and workingDir /workspace, but no PVC: the
+# default emptyDir is private to that pod.
 jenkins:
   clouds:
     - kubernetes:
@@ -21,217 +28,171 @@ jenkins:
         templates:
           - name: "ceph-seed-agent"
             label: "ceph-seed-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-seed-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/tmp"
-                ttyEnabled: true
-                command: "sleep"
-                args: "99d"
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 resourceRequestCpu: "100m"
                 resourceLimitCpu: "500m"
                 resourceRequestMemory: "256Mi"
                 resourceLimitMemory: "512Mi"
+                envVars:
+                  - envVar:
+                      key: "HOME"
+                      value: "/workspace"
           - name: "ceph-build-fedora39-agent"
             label: "ceph-build-fedora39-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-fedora39-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
-                command: "sleep"
-                args: "99d"
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
           - name: "ceph-build-centos9-agent"
             label: "ceph-build-centos9-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-centos9-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 privileged: true
-                command: "sleep"
-                args: "99d"
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
           - name: "ceph-build-rocky10-agent"
             label: "ceph-build-rocky10-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-rocky10-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 privileged: true
-                command: "sleep"
-                args: "99d"
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
           - name: "ceph-build-ubuntu-noble-agent"
             label: "ceph-build-ubuntu-noble-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-noble-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 privileged: true
-                command: "sleep"
-                args: "99d"
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
           - name: "ceph-build-ubuntu-jammy-agent"
             label: "ceph-build-ubuntu-jammy-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-ubuntu-jammy-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 privileged: true
-                command: "sleep"
-                args: "99d"
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
                 envVars:
                   - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+                  - envVar:
                       key: "ALLOCATED_CPUS"
                       value: "4"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
           - name: "ceph-build-buildah-agent"
             label: "ceph-build-buildah-agent"
-            agentContainer: "builder"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              persistentVolumeClaimWorkspaceVolume:
+                claimName: "__SHARED_WORKSPACE_CLAIM__"
+                readOnly: false
             containers:
               - name: "jnlp"
-                image: "jenkins/inbound-agent:latest"
-                workingDir: "/tmp"
-                resourceRequestCpu: "100m"
-                resourceLimitCpu: "500m"
-                resourceRequestMemory: "256Mi"
-                resourceLimitMemory: "512Mi"
-              - name: "builder"
                 image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-buildah-agent:__AGENT_IMAGE_TAG__"
-                workingDir: "/home/jenkins/workspace"
-                ttyEnabled: true
-                command: "sleep"
-                args: "99d"
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
                 privileged: true
                 resourceRequestCpu: "2"
                 resourceLimitCpu: "4"
                 resourceRequestMemory: "4Gi"
                 resourceLimitMemory: "16Gi"
-            volumes:
-              - persistentVolumeClaim:
-                  claimName: "__SHARED_WORKSPACE_CLAIM__"
-                  mountPath: "/home/jenkins/workspace"
-                  readOnly: false
+                envVars:
+                  - envVar:
+                      key: "HOME"
+                      value: "/workspace"

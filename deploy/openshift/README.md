@@ -66,7 +66,7 @@ helm upgrade --install ceph-jenkins ./deploy/openshift \
   --set-file propertiesContent=$HOME/jenkins_config/properties.yaml
 ```
 
-The shared-workspace PVC is **required** (RWX) and is mounted by build-agent templates at `/home/jenkins/workspace`. Set `persistence.sharedWorkspace.storageClass` to an RWX-capable class if the cluster default does not support `ReadWriteMany`.
+The shared-workspace PVC is **required** (RWX) and is mounted by build-agent templates at `/workspace`. Set `persistence.sharedWorkspace.storageClass` to an RWX-capable class if the cluster default does not support `ReadWriteMany`.
 
 The chart fills namespace, Jenkins Service name, ServiceAccount, shared-workspace PVC name, and agent image prefix/tag/pull-secrets in `clouds-openshift.yaml` from the Helm release. Keep the `__JENKINS_*__` / `__AGENT_*__` / `__SHARED_WORKSPACE_CLAIM__` tokens if you supply a custom clouds file.
 
@@ -123,9 +123,11 @@ helm upgrade --install ceph-jenkins ./deploy/openshift \
 
 ## Agent pods
 
-Templates use a `jnlp` sidecar plus a `builder` container, with **`agentContainer: builder`**, so existing pipelines that only set `agent { label 'ceph-build-...' }` run steps in the Ceph agent image. `jnlp` uses `workingDir: /tmp` (OpenShift random UID cannot write `/home/jenkins/agent`); builders use the shared-workspace PVC at `/home/jenkins/workspace`.
+Each template is **one container** named `jnlp`. The image is the distro agent (`ceph-jenkins-fedora39-agent` and the other agent images), which contains `jenkins-agent` and `agent.jar` copied from `jenkins/inbound-agent`. The pod `command` is `jenkins-agent`, so checkout and build steps share that container's CPU and memory. `agentInjection` is not used: its `set-up-jenkins-agent` init container has no resource requests and fails this cluster's ResourceQuota.
 
-Agent pods use the chart ServiceAccount (via `__JENKINS_SERVICE_ACCOUNT__` in Casc), not `default`. CentOS, Rocky, Ubuntu, and buildah builders are **privileged** (`sudo` package installs, or buildah). Grant an SCC that allows privileged pods to that ServiceAccount, or avoid those labels on restricted clusters:
+Build agents set `workingDir` and `HOME` to `/workspace`. The shared-workspace PVC is the Kubernetes plugin `workspaceVolume` (`persistentVolumeClaimWorkspaceVolume`) mounted at that working directory. Do not also add the claim under `volumes`: the plugin's default emptyDir workspace volume would cover `/workspace` and hide the PVC. Jenkins' node directory is `/workspace/workspace/<job>`; pipeline `SHARED_WORKSPACE` stays `/workspace/<job>/<build>` on the same volume. The seed agent uses the same `/workspace` home, backed by the default emptyDir instead of the shared PVC.
+
+Agent pods use the chart ServiceAccount (via `__JENKINS_SERVICE_ACCOUNT__` in Casc), not `default`. CentOS, Rocky, Ubuntu, and buildah agents are **privileged** (`sudo` package installs, or buildah). Grant an SCC that allows privileged pods to that ServiceAccount, or avoid those labels on restricted clusters:
 
 ```sh
 oc adm policy add-scc-to-user privileged -z ceph-jenkins -n ceph-jenkins
@@ -152,6 +154,6 @@ oc get route ceph-jenkins -n ceph-jenkins -o jsonpath='{.spec.host}{"\n"}'
 | Secret (`properties.yaml`) | `/var/jenkins_home/casc_configs/03-properties.yaml` |
 | ConfigMap (`seed.groovy`) | `/var/jenkins_home/seed.groovy` |
 | PVC home | `/var/jenkins_home` |
-| PVC shared workspace | `/home/jenkins/workspace` |
+| PVC shared workspace | `/workspace` |
 
 There is **no** `podman.sock` mount on OpenShift. Pod security uses an empty `podSecurityContext` so OpenShift can assign an allowed UID/GID range (avoid hardcoded `fsGroup: 1000`).
