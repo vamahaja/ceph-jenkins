@@ -1,0 +1,25 @@
+#cloud-config
+hostname: ceph-build-rocky10-agent
+ssh_pwauth: true
+runcmd:
+  - |
+    bash <<'EOS'
+    set -euo pipefail
+    sed -i 's/^mirrorlist=/#mirrorlist=/g' /etc/yum.repos.d/rocky*.repo
+    sed -i 's|^#baseurl=http://dl.rockylinux.org/\$contentdir|baseurl=http://dl.rockylinux.org/pub/rocky|g' /etc/yum.repos.d/rocky*.repo
+    dnf install --allowerasing -y \
+      __COMMON_RPM_PACKAGES__
+    dnf clean all
+    pip3 install __PIP_PACKAGES__
+    dnf -y install epel-release dnf-plugins-core
+    /usr/bin/crb enable
+    dnf -y install javapackages-tools python3-cython mock
+    dnf clean all
+    __GUEST_SETUP__
+    cat > /tmp/install-nix.sh << 'NIXSCRIPT'
+    __INSTALL_NIX__
+    NIXSCRIPT
+    chmod +x /tmp/install-nix.sh
+    NIX_CHOWN_USER=jenkins /tmp/install-nix.sh
+    rm -f /tmp/install-nix.sh
+    EOS

@@ -1,0 +1,26 @@
+cmake \
+cpio \
+createrepo_c \
+curl \
+dnf-plugins-core \
+gcc \
+gcc-c++ \
+git \
+gzip \
+java-21-openjdk-devel \
+jq \
+make \
+openssh-server \
+podman \
+python3-devel \
+python3-pip \
+python3-setuptools \
+rpm-build \
+rsync \
+skopeo \
+sudo \
+tar \
+wget \
+which \
+xz \
+yum-utils

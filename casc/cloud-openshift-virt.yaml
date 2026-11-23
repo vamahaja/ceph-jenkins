@@ -1,0 +1,152 @@
+# Hybrid OpenShift agents: seed stays a pod, build agents are static VMs.
+#
+# Pass this file as cascCloudsContent instead of casc/clouds-openshift.yaml.
+# Do not load both. Build labels exist only as permanent SSH nodes here.
+#
+# Helm substitutes __JENKINS_NAMESPACE__, __JENKINS_SERVICE__,
+# __JENKINS_SERVICE_ACCOUNT__, and __AGENT_IMAGE_*__ the same way as
+# casc/clouds-openshift.yaml.
+#
+# SSH nodes log in as jenkins with password credential ceph-virt-agent-ssh.
+# Hosts are the ClusterIP Services created for each VirtualMachine.
+jenkins:
+  clouds:
+    - kubernetes:
+        name: "openshift"
+        namespace: "__JENKINS_NAMESPACE__"
+        jenkinsUrl: "http://__JENKINS_SERVICE__:8080/"
+        jenkinsTunnel: "__JENKINS_SERVICE__:50000"
+        containerCap: 4
+        templates:
+          - name: "ceph-seed-agent"
+            label: "ceph-seed-agent"
+            serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
+            __AGENT_IMAGE_PULL_SECRETS__
+            containers:
+              - name: "jnlp"
+                image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-seed-agent:__AGENT_IMAGE_TAG__"
+                workingDir: "/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
+                resourceRequestCpu: "100m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+                envVars:
+                  - envVar:
+                      key: "HOME"
+                      value: "/workspace"
+          - name: "ceph-make-dist-agent"
+            label: "ceph-make-dist-agent"
+            serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
+            __AGENT_IMAGE_PULL_SECRETS__
+            workspaceVolume:
+              dynamicPVC:
+                accessModes: "ReadWriteOnce"
+                requestsSize: "100Gi"
+            containers:
+              - name: "jnlp"
+                image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-make-dist-agent:__AGENT_IMAGE_TAG__"
+                workingDir: "/home/jenkins/workspace"
+                command: "jenkins-agent"
+                alwaysPullImage: true
+                resourceRequestCpu: "2"
+                resourceLimitCpu: "4"
+                resourceRequestMemory: "4Gi"
+                resourceLimitMemory: "16Gi"
+                envVars:
+                  - envVar:
+                      key: "HOME"
+                      value: "/home/jenkins/workspace"
+                  - envVar:
+                      key: "ALLOCATED_CPUS"
+                      value: "4"
+  nodes:
+    - permanent:
+        name: "virt-ceph-build-centos9-agent"
+        nodeDescription: "Static OpenShift Virt CentOS Stream 9 build agent"
+        remoteFS: "/home/jenkins"
+        labelString: "ceph-build-centos9-agent"
+        mode: EXCLUSIVE
+        numExecutors: 1
+        retentionStrategy: "always"
+        launcher:
+          ssh:
+            host: "ceph-build-centos9-agent.__JENKINS_NAMESPACE__.svc"
+            port: 22
+            credentialsId: "ceph-virt-agent-ssh"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: "ALLOCATED_CPUS"
+                  value: "16"
+    - permanent:
+        name: "virt-ceph-build-rocky10-agent"
+        nodeDescription: "Static OpenShift Virt Rocky Linux 10 build agent"
+        remoteFS: "/home/jenkins"
+        labelString: "ceph-build-rocky10-agent"
+        mode: EXCLUSIVE
+        numExecutors: 1
+        retentionStrategy: "always"
+        launcher:
+          ssh:
+            host: "ceph-build-rocky10-agent.__JENKINS_NAMESPACE__.svc"
+            port: 22
+            credentialsId: "ceph-virt-agent-ssh"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: "ALLOCATED_CPUS"
+                  value: "16"
+    - permanent:
+        name: "virt-ceph-build-ubuntu-noble-agent"
+        nodeDescription: "Static OpenShift Virt Ubuntu 24.04 build agent"
+        remoteFS: "/home/jenkins"
+        labelString: "ceph-build-ubuntu-noble-agent"
+        mode: EXCLUSIVE
+        numExecutors: 1
+        retentionStrategy: "always"
+        launcher:
+          ssh:
+            host: "ceph-build-ubuntu-noble-agent.__JENKINS_NAMESPACE__.svc"
+            port: 22
+            credentialsId: "ceph-virt-agent-ssh"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: "ALLOCATED_CPUS"
+                  value: "16"
+    - permanent:
+        name: "virt-ceph-build-ubuntu-jammy-agent"
+        nodeDescription: "Static OpenShift Virt Ubuntu 22.04 build agent"
+        remoteFS: "/home/jenkins"
+        labelString: "ceph-build-ubuntu-jammy-agent"
+        mode: EXCLUSIVE
+        numExecutors: 1
+        retentionStrategy: "always"
+        launcher:
+          ssh:
+            host: "ceph-build-ubuntu-jammy-agent.__JENKINS_NAMESPACE__.svc"
+            port: 22
+            credentialsId: "ceph-virt-agent-ssh"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: "ALLOCATED_CPUS"
+                  value: "16"

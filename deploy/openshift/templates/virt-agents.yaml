@@ -1,0 +1,175 @@
+{{- if eq .Values.agentMode "virt" }}
+{{- $key := .Values.virtAgents.sshPublicKey | trim }}
+{{- if not $key }}
+{{- fail "virtAgents.sshPublicKey is required when agentMode is virt. deploy/openshift/deploy-virt.sh passes it with --set-file." }}
+{{- end }}
+{{- $root := . }}
+{{- $common := $root.Values.virtAgents.guestSetupContent | trimSuffix "\n" }}
+{{- if not $common }}
+{{- fail "virtAgents.guestSetupContent is required when agentMode is virt. deploy/openshift/deploy-virt.sh passes deploy/scripts/guest-setup.sh with --set-file." }}
+{{- end }}
+{{- $indented := "" }}
+{{- range splitList "\n" $common }}
+{{- $indented = printf "%s    %s\n" $indented . }}
+{{- end }}
+{{- $rpmPkgs := $root.Values.virtAgents.packagesRpmContent | trimSuffix "\n" }}
+{{- $debPkgs := $root.Values.virtAgents.packagesDebContent | trimSuffix "\n" }}
+{{- $pipPkgs := $root.Values.virtAgents.packagesPipContent | trimSuffix "\n" }}
+{{- if or (not $rpmPkgs) (not $debPkgs) (not $pipPkgs) }}
+{{- fail "virtAgents.packagesRpmContent, packagesDebContent, and packagesPipContent are required when agentMode is virt. deploy/openshift/deploy-virt.sh passes deploy/virtual-machines/packages/{rpm,deb,pip}.txt with --set-file." }}
+{{- end }}
+{{- $rpmIndented := "" }}
+{{- range splitList "\n" $rpmPkgs }}
+{{- $rpmIndented = printf "%s      %s\n" $rpmIndented . }}
+{{- end }}
+{{- $debIndented := "" }}
+{{- range splitList "\n" $debPkgs }}
+{{- $debIndented = printf "%s      %s\n" $debIndented . }}
+{{- end }}
+{{- $pipJoined := "" }}
+{{- range splitList "\n" $pipPkgs }}
+{{- if . }}
+{{- if $pipJoined }}
+{{- $pipJoined = printf "%s %s" $pipJoined . }}
+{{- else }}
+{{- $pipJoined = . }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- $nixScript := $root.Values.virtAgents.installNixContent | trimSuffix "\n" }}
+{{- if not $nixScript }}
+{{- fail "virtAgents.installNixContent is required when agentMode is virt. deploy/openshift/deploy-virt.sh passes deploy/scripts/install-nix.sh with --set-file." }}
+{{- end }}
+{{- $nixIndented := "" }}
+{{- range splitList "\n" $nixScript }}
+{{- $nixIndented = printf "%s    %s\n" $nixIndented . }}
+{{- end }}
+{{- range .Values.virtAgents.agents }}
+{{- $userData := index $root.Values.virtAgents.cloudInitContent .cloudInit | default "" | trimSuffix "\n" }}
+{{- if not $userData }}
+{{- fail (printf "missing virtAgents.cloudInitContent.%s (deploy/virtual-machines/agents/<path>/cloud-init.yaml); deploy-virt.sh passes it with --set-file." .cloudInit) }}
+{{- end }}
+{{- $userData = $userData | replace "    __GUEST_SETUP__\n" $indented | replace "    __INSTALL_NIX__\n" $nixIndented | replace "      __COMMON_RPM_PACKAGES__\n" $rpmIndented | replace "      __DEB_PACKAGES__\n" $debIndented | replace "__PIP_PACKAGES__" $pipJoined | replace "__SSH_PUBLIC_KEY__" $key }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name }}-home
+  labels:
+    {{- include "ceph-jenkins.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: virt-agent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  resources:
+    requests:
+        storage: {{ .homeDiskSize | default $root.Values.virtAgents.homeDiskSize }}
+  {{- if $root.Values.virtAgents.storageClass }}
+  storageClassName: {{ $root.Values.virtAgents.storageClass | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}-cloudinit
+  labels:
+    {{- include "ceph-jenkins.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: virt-agent
+stringData:
+  userdata: |
+{{ $userData | indent 4 }}
+---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "ceph-jenkins.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: virt-agent
+spec:
+  source:
+    http:
+      url: {{ .image | quote }}
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ $root.Values.virtAgents.rootDiskSize }}
+    {{- if $root.Values.virtAgents.storageClass }}
+    storageClassName: {{ $root.Values.virtAgents.storageClass | quote }}
+    {{- end }}
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "ceph-jenkins.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: virt-agent
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        {{- include "ceph-jenkins.selectorLabels" $root | nindent 8 }}
+        app.kubernetes.io/component: virt-agent
+        kubevirt.io/domain: {{ .name }}
+    spec:
+      hostname: {{ .name }}
+      domain:
+        firmware:
+          uuid: {{ .firmwareUUID | quote }}
+        cpu:
+          cores: {{ .cpu | default $root.Values.virtAgents.cpu }}
+        resources:
+          requests:
+            cpu: {{ .cpu | default $root.Values.virtAgents.cpu | quote }}
+            memory: {{ .memory | default $root.Values.virtAgents.memory }}
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: cloudinit
+              disk:
+                bus: virtio
+            - name: homedisk
+              disk:
+                bus: virtio
+              serial: homedisk
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: {{ .name }}
+        - name: cloudinit
+          cloudInitNoCloud:
+            secretRef:
+              name: {{ .name }}-cloudinit
+        - name: homedisk
+          persistentVolumeClaim:
+            claimName: {{ .name }}-home
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "ceph-jenkins.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: virt-agent
+spec:
+  selector:
+    vm.kubevirt.io/name: {{ .name }}
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+{{- end }}
+{{- end }}

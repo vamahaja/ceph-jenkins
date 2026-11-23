@@ -1,0 +1,23 @@
+#cloud-config
+hostname: ceph-build-centos9-agent
+ssh_pwauth: true
+runcmd:
+  - |
+    bash <<'EOS'
+    set -euo pipefail
+    dnf install --allowerasing -y \
+      __COMMON_RPM_PACKAGES__
+    dnf clean all
+    pip3 install __PIP_PACKAGES__
+    dnf -y copr enable ceph/el9
+    dnf config-manager --set-enabled crb
+    dnf -y install epel-next-release javapackages-tools python3-Cython
+    dnf -y install mock
+    __GUEST_SETUP__
+    cat > /tmp/install-nix.sh << 'NIXSCRIPT'
+    __INSTALL_NIX__
+    NIXSCRIPT
+    chmod +x /tmp/install-nix.sh
+    NIX_CHOWN_USER=jenkins /tmp/install-nix.sh
+    rm -f /tmp/install-nix.sh
+    EOS
