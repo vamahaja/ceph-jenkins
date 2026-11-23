@@ -31,7 +31,7 @@ jenkins:
           - key: "SHAMAN_CEPH_REPO_URL"
             value: "https://shaman.ceph.com/r/ceph"
           - key: "SHARED_WORKSPACE"
-            value: "/home/jenkins/workspace"
+            value: "/workspace"
 
 security:
   # Enforce Content Security Policy

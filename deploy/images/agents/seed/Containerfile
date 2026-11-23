@@ -21,10 +21,19 @@ RUN groupadd -g ${AGENT_GID} ${AGENT_GROUP} && \
 # Set Up Workspace
 WORKDIR /home/${AGENT_USER}
 RUN mkdir -p /home/${AGENT_USER}/workspace && \
-    chown -R ${AGENT_USER}:${AGENT_GROUP} /home/${AGENT_USER}
+    chown -R ${AGENT_USER}:${AGENT_GROUP} /home/${AGENT_USER} && \
+    chmod 755 /home/${AGENT_USER}
+
+# Remoting launcher for OpenShift (pod command: jenkins-agent). Two files only.
+# Podman keeps CMD bash and does not run this entrypoint.
+COPY --from=docker.io/jenkins/inbound-agent:latest /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent
+COPY --from=docker.io/jenkins/inbound-agent:latest /usr/share/jenkins/agent.jar /usr/share/jenkins/agent.jar
 
 # Final Configuration
 USER ${AGENT_USER}
+
+# Podman attach keeps this shell as PID 1. OpenShift overrides command with jenkins-agent.
+CMD ["/bin/bash"]
 
 # Seed job description labels
 LABEL description="Jenkins Seed Job Agent for Pipelines" \
