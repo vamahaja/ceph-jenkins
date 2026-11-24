@@ -21,7 +21,7 @@ pipeline {
         stage("Checkout Repositories") {
             agent {
                 node {
-                    label "ceph-build-fedora39-agent"
+                    label "ceph-make-dist-agent"
                 }
             }
 
@@ -44,7 +44,7 @@ pipeline {
 
     post {
         always {
-            node("ceph-build-fedora39-agent") {
+            node("ceph-make-dist-agent") {
                 script {
                     def sharedWs = ceph.resolveSharedWorkspace()
                     ws(sharedWs) {

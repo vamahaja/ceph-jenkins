@@ -79,7 +79,7 @@ echo "Verifying required images..."
 REQUIRED_IMAGES=(
     "ceph-jenkins-controller:latest"
     "ceph-jenkins-seed-agent:latest"
-    "ceph-jenkins-fedora39-agent:latest"
+    "ceph-jenkins-make-dist-agent:latest"
     "ceph-jenkins-centos9-agent:latest"
     "ceph-jenkins-rocky10-agent:latest"
     "ceph-jenkins-ubuntu-noble-agent:latest"

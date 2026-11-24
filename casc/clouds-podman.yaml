@@ -33,14 +33,14 @@ jenkins:
             connector:
               attach:
                 user: "jenkins"
-          - name: "ceph-build-fedora39-agent"
-            labelString: "ceph-build-fedora39-agent"
+          - name: "ceph-make-dist-agent"
+            labelString: "ceph-make-dist-agent"
             remoteFs: "/home/jenkins"
             mode: EXCLUSIVE
             pullStrategy: PULL_NEVER
             instanceCapStr: "4"
             dockerTemplateBase:
-              image: "ceph-jenkins-fedora39-agent:latest"
+              image: "ceph-jenkins-make-dist-agent:latest"
               tty: true
               securityOpts:
                 - "label=disable"

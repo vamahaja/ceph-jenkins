@@ -43,8 +43,8 @@ jenkins:
                   - envVar:
                       key: "HOME"
                       value: "/home/jenkins/workspace"
-          - name: "ceph-build-fedora39-agent"
-            label: "ceph-build-fedora39-agent"
+          - name: "ceph-make-dist-agent"
+            label: "ceph-make-dist-agent"
             serviceAccount: "__JENKINS_SERVICE_ACCOUNT__"
             __AGENT_IMAGE_PULL_SECRETS__
             workspaceVolume:
@@ -53,7 +53,7 @@ jenkins:
                 requestsSize: "100Gi"
             containers:
               - name: "jnlp"
-                image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-fedora39-agent:__AGENT_IMAGE_TAG__"
+                image: "__AGENT_IMAGE_PREFIX__ceph-jenkins-make-dist-agent:__AGENT_IMAGE_TAG__"
                 workingDir: "/home/jenkins/workspace"
                 command: "jenkins-agent"
                 alwaysPullImage: true
