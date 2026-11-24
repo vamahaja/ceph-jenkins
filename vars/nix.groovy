@@ -73,6 +73,9 @@ def buildSelected(String distroParam = null, String archParam = null) {
                     ceph.checkoutRepo(cephDir, null, params.CEPH_BRANCH, false)
                     dir(cephDir) {
                         unstash(distStashName())
+                        // make-dist renders ceph.spec into the tarball only.
+                        // make-srpm.sh skips make-dist when that tarball exists.
+                        extractSpec(env.CEPH_VERSION)
                     }
                     packageDistro(distro)
                     if (params.PUBLISH_ARTIFACTS) {
@@ -157,6 +160,19 @@ def makeDist(String cephDir = null) {
 
 def distStashName() {
     return "ceph-dist-tarball"
+}
+
+// rpmbuild -bs reads ceph.spec from the checkout. The rendered file is inside
+// the make-dist tarball (ceph-<version>/ceph.spec), not in the git tree.
+def extractSpec(String version) {
+    if (!version) {
+        error("CEPH_VERSION is not set; cannot extract ceph.spec")
+    }
+    def tarball = "ceph-${version}.tar.bz2"
+    if (!fileExists(tarball)) {
+        error("Missing ${tarball}; run make-dist first")
+    }
+    sh "test -f ceph.spec || tar -xjf '${tarball}' --strip-components=1 'ceph-${version}/ceph.spec'"
 }
 
 def packageDistro(String distro, String buildMode = null) {
