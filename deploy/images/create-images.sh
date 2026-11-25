@@ -20,33 +20,32 @@ echo "Building Seed Agent..."
 podman build \
     -t ceph-jenkins-seed-agent ./deploy/images/agents/seed
 
-# Shared context is deploy/images/agents so Containerfiles can
-# COPY helpers such as install-nix.sh.
-AGENT_BUILD_CTX="./deploy/images/agents"
+# Shared context is deploy/ so Containerfiles can COPY scripts/install-nix.sh.
+DEPLOY_CTX="./deploy"
 
 echo "Building Make Dist Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -f "${AGENT_BUILD_CTX}/make-dist/Containerfile" \
+    -f "${DEPLOY_CTX}/images/agents/make-dist/Containerfile" \
     -t ceph-jenkins-make-dist-agent \
-    "${AGENT_BUILD_CTX}"
+    "${DEPLOY_CTX}"
 
 echo "Building CentOS 9 Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -f "${AGENT_BUILD_CTX}/centos/9.stream/Containerfile" \
+    -f "${DEPLOY_CTX}/images/agents/centos/9.stream/Containerfile" \
     -t ceph-jenkins-centos9-agent \
-    "${AGENT_BUILD_CTX}"
+    "${DEPLOY_CTX}"
 
 echo "Building Rocky 10 Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -f "${AGENT_BUILD_CTX}/rocky/10/Containerfile" \
+    -f "${DEPLOY_CTX}/images/agents/rocky/10/Containerfile" \
     -t ceph-jenkins-rocky10-agent \
-    "${AGENT_BUILD_CTX}"
+    "${DEPLOY_CTX}"
 
 echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
 podman build \
