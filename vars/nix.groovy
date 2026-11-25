@@ -10,7 +10,7 @@ def nixBin() {
 }
 
 def makeDistAgent() {
-    return "ceph-build-fedora39-agent"
+    return "ceph-make-dist-agent"
 }
 
 // Builder PATH may omit the image Nix profile under remoting; prepend it.

@@ -1,41 +1,27 @@
-# Base Fedora 39 image
-FROM registry.fedoraproject.org/fedora:39
+# Alpine inbound agent: Java 25, git, bash, jenkins (uid 1000), jenkins-agent, and agent.jar.
+# Job DSL Groovy runs on the controller. This image only checks out the repo and
+# stays connected. Podman remoteFs is /home/jenkins and expects uid 1000.
+FROM docker.io/jenkins/inbound-agent:alpine-jdk25
 
-# Build Arguments
-ARG AGENT_UID=1000
-ARG AGENT_GID=1001
-ARG AGENT_USER=jenkins
-ARG AGENT_GROUP=jenkins-bridge
+USER root
 
-# Install Core Dependencies
-RUN dnf install -y \
-    java-21-openjdk-devel \
-    git \
-    which \
-    && dnf clean all
+# git is used by the seed checkout and teuthology_trigger_ci. bash is PID 1 for
+# the Podman attach connector. OpenShift assigns a random UID, so home must be
+# traversable (not mode 700) and the workspace mount point must exist.
+RUN apk add --no-cache git bash \
+    && mkdir -p /home/jenkins/workspace \
+    && chown -R jenkins:jenkins /home/jenkins \
+    && chmod 755 /home/jenkins
 
-# Create User and Group
-RUN groupadd -g ${AGENT_GID} ${AGENT_GROUP} && \
-    useradd -u ${AGENT_UID} -g ${AGENT_GID} -m -s /bin/bash ${AGENT_USER}
+USER jenkins
+WORKDIR /home/jenkins
 
-# Set Up Workspace
-WORKDIR /home/${AGENT_USER}
-RUN mkdir -p /home/${AGENT_USER}/workspace && \
-    chown -R ${AGENT_USER}:${AGENT_GROUP} /home/${AGENT_USER} && \
-    chmod 755 /home/${AGENT_USER}
-
-# Remoting launcher for OpenShift (pod command: jenkins-agent). Two files only.
-# Podman keeps CMD bash and does not run this entrypoint.
-COPY --from=docker.io/jenkins/inbound-agent:latest /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent
-COPY --from=docker.io/jenkins/inbound-agent:latest /usr/share/jenkins/agent.jar /usr/share/jenkins/agent.jar
-
-# Final Configuration
-USER ${AGENT_USER}
-
-# Podman attach keeps this shell as PID 1. OpenShift overrides command with jenkins-agent.
+# Podman attach keeps this shell as PID 1. An entrypoint of jenkins-agent exits
+# because that connector does not set JENKINS_SECRET. OpenShift overrides
+# command with jenkins-agent, which this base image already provides.
+ENTRYPOINT []
 CMD ["/bin/bash"]
 
-# Seed job description labels
 LABEL description="Jenkins Seed Job Agent for Pipelines" \
-      base_image="fedora:39" \
-      purpose="Job DSL processing"
+      base_image="jenkins/inbound-agent:alpine-jdk25" \
+      purpose="Job DSL checkout"

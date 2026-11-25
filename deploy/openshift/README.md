@@ -33,7 +33,7 @@ REGISTRY=image-registry.openshift-image-registry.svc:5000/<namespace>
 for img in \
   ceph-jenkins-controller \
   ceph-jenkins-seed-agent \
-  ceph-jenkins-fedora39-agent \
+  ceph-jenkins-make-dist-agent \
   ceph-jenkins-centos9-agent \
   ceph-jenkins-rocky10-agent \
   ceph-jenkins-ubuntu-noble-agent \
@@ -123,7 +123,7 @@ helm upgrade --install ceph-jenkins ./deploy/openshift \
 
 ## Agent pods
 
-Each template is **one container** named `jnlp`. The image is the distro agent (`ceph-jenkins-fedora39-agent` and the other agent images), which contains `jenkins-agent` and `agent.jar` copied from `jenkins/inbound-agent`. The pod `command` is `jenkins-agent`, so checkout, git, and Nix share that container's CPU and memory. `agentInjection` is not used: its `set-up-jenkins-agent` init container has no resource requests and fails this cluster's ResourceQuota.
+Each template is **one container** named `jnlp`. The image is the agent (`ceph-jenkins-make-dist-agent` and the distro agent images), which contains `jenkins-agent` and `agent.jar` copied from `jenkins/inbound-agent`. The pod `command` is `jenkins-agent`, so checkout, git, and Nix share that container's CPU and memory. `agentInjection` is not used: its `set-up-jenkins-agent` init container has no resource requests and fails this cluster's ResourceQuota.
 
 Build agents set `workingDir` and `HOME` to `/home/jenkins/workspace`. Each build pod gets its own `dynamicPVC` workspace volume (`ReadWriteOnce`, `100Gi`), mounted at that working directory and deleted with the pod. The cluster default StorageClass is used. The seed agent uses the same path on the default emptyDir. The Nix pipeline keeps Make Dist on that pod disk and copies `ceph-<version>.tar.bz2` to the distro agents with `stash`. The chart still creates the shared-workspace PVC for the controller mount; build agents do not mount it.
 

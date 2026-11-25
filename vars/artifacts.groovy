@@ -18,8 +18,8 @@ def initEnv() {
     if (!env.SHAMAN_CEPH_REPO_URL) {
         error("SHAMAN_CEPH_REPO_URL is not set (configure via Casc globalNodeProperties)")
     }
-    env.BUILD_RPM = "${sharedWs}/deploy/images/agents/build/centos/build_rpm"
-    env.BUILD_DEB = "${sharedWs}/deploy/images/agents/build/ubuntu/build_deb"
+    env.BUILD_RPM = "${sharedWs}/deploy/images/agents/centos/build_rpm"
+    env.BUILD_DEB = "${sharedWs}/deploy/images/agents/ubuntu/build_deb"
     // Consumed by deploy/.../build_rpm and build_deb.
     env.REPO_URL = env.REPO_URL ?: env.SHAMAN_CEPH_REPO_URL
     env.RPM_BUILD_OPTS = params.RPM_BUILD_OPTS ?: ""

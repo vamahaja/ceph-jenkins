@@ -1,14 +1,16 @@
-FROM registry.fedoraproject.org/fedora:39
+FROM registry.fedoraproject.org/fedora:45
 
 # Define Build Arguments for UID/GID matching
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG USER_NAME=jenkins
 
-# Install all required RPM build tools and pipeline dependencies
+# Install all required RPM build tools and pipeline dependencies.
+# Fedora 45 ships Java 25 (java-21-openjdk was removed in Fedora 44).
+# The controller image is jenkins/jenkins:lts-jdk25, which agents may run.
 RUN dnf install --allowerasing -y \
     sudo \
-    java-21-openjdk-devel \
+    java-25-openjdk-devel \
     git \
     rsync \
     which \
@@ -52,8 +54,8 @@ RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME} && \
     chmod 755 /home/${USER_NAME}
 # Remoting launcher for OpenShift (pod command: jenkins-agent). Two files only;
 # the distro image stays the base. Podman keeps CMD bash and does not run this.
-COPY --from=docker.io/jenkins/inbound-agent:latest /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent
-COPY --from=docker.io/jenkins/inbound-agent:latest /usr/share/jenkins/agent.jar /usr/share/jenkins/agent.jar
+COPY --from=docker.io/jenkins/inbound-agent:latest-jdk25 /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-agent
+COPY --from=docker.io/jenkins/inbound-agent:latest-jdk25 /usr/share/jenkins/agent.jar /usr/share/jenkins/agent.jar
 
 # Switch to the non-root user
 USER ${USER_NAME}

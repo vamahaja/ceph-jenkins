@@ -15,22 +15,21 @@ echo "Detected Host UID: $HOST_UID"
 echo "Building Jenkins Controller..."
 podman build --pull=always -t ceph-jenkins-controller ./deploy/images/controller
 
-echo "Building Seed Agent (with dynamic permissions)..."
+echo "Building Seed Agent..."
+# Alpine inbound-agent keeps jenkins at uid 1000. Podman remoteFs is /home/jenkins.
 podman build \
-    --build-arg USER_ID=$HOST_UID \
-    --build-arg GROUP_ID=$SOCKET_GID \
     -t ceph-jenkins-seed-agent ./deploy/images/agents/seed
 
-# Agent build context is deploy/images/agents/build so Containerfiles can
-# COPY shared helpers such as install-nix.sh.
-AGENT_BUILD_CTX="./deploy/images/agents/build"
+# Shared context is deploy/images/agents so Containerfiles can
+# COPY helpers such as install-nix.sh.
+AGENT_BUILD_CTX="./deploy/images/agents"
 
-echo "Building Fedora 39 Build Agent (with dynamic permissions)..."
+echo "Building Make Dist Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -f "${AGENT_BUILD_CTX}/fedora/39/Containerfile" \
-    -t ceph-jenkins-fedora39-agent \
+    -f "${AGENT_BUILD_CTX}/make-dist/Containerfile" \
+    -t ceph-jenkins-make-dist-agent \
     "${AGENT_BUILD_CTX}"
 
 echo "Building CentOS 9 Build Agent (with dynamic permissions)..."
@@ -53,26 +52,26 @@ echo "Building Ubuntu Noble Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-ubuntu-noble-agent ./deploy/images/agents/build/ubuntu/noble
+    -t ceph-jenkins-ubuntu-noble-agent ./deploy/images/agents/ubuntu/noble
 
 echo "Building Ubuntu Jammy Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-ubuntu-jammy-agent ./deploy/images/agents/build/ubuntu/jammy
+    -t ceph-jenkins-ubuntu-jammy-agent ./deploy/images/agents/ubuntu/jammy
 
 echo "Building Buildah Build Agent (with dynamic permissions)..."
 podman build \
     --build-arg USER_ID=$HOST_UID \
     --build-arg GROUP_ID=$SOCKET_GID \
-    -t ceph-jenkins-buildah-agent ./deploy/images/agents/build/buildah
+    -t ceph-jenkins-buildah-agent ./deploy/images/agents/buildah
 
 # --- Verify Built Images ---
 echo "Verifying built images..."
 REQUIRED_IMAGES=(
     "ceph-jenkins-controller:latest"
     "ceph-jenkins-seed-agent:latest"
-    "ceph-jenkins-fedora39-agent:latest"
+    "ceph-jenkins-make-dist-agent:latest"
     "ceph-jenkins-centos9-agent:latest"
     "ceph-jenkins-rocky10-agent:latest"
     "ceph-jenkins-ubuntu-noble-agent:latest"
