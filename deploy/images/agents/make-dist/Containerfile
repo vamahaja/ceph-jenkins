@@ -40,7 +40,7 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     echo "${USER_NAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Nix flakes for Stage 1 shared make-dist via flake packaging shell
-COPY install-nix.sh /tmp/install-nix.sh
+COPY scripts/install-nix.sh /tmp/install-nix.sh
 RUN chmod +x /tmp/install-nix.sh && \
     NIX_CHOWN_USER=${USER_NAME} /tmp/install-nix.sh && \
     rm -f /tmp/install-nix.sh

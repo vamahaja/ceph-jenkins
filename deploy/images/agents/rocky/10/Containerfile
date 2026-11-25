@@ -53,7 +53,7 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} || true && \
     (getent group mock >/dev/null && usermod -a -G mock ${USER_NAME} || true)
 
 # Nix flakes for on-host flake packaging
-COPY install-nix.sh /tmp/install-nix.sh
+COPY scripts/install-nix.sh /tmp/install-nix.sh
 RUN chmod +x /tmp/install-nix.sh && \
     NIX_CHOWN_USER=${USER_NAME} /tmp/install-nix.sh && \
     rm -f /tmp/install-nix.sh
