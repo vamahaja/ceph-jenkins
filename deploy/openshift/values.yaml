@@ -79,6 +79,61 @@ propertiesContent: ""
 # template (e.g. RBAC only) without the rest of the release inputs.
 validate: true
 
+# pod: every agent is a Kubernetes pod (casc/clouds-openshift.yaml).
+# virt: seed stays a pod; build agents are static VirtualMachines
+# (casc/cloud-openshift-virt.yaml). deploy/openshift/deploy-virt.sh sets virt.
+agentMode: pod
+
+virtAgents:
+  storageClass: ""
+  rootDiskSize: 40Gi
+  # Separate RBD disk per build VM, mounted at /home/jenkins.
+  # Uses virtAgents.storageClass (must support volumeMode: Block).
+  homeDiskSize: 300Gi
+  cpu: 16
+  memory: 64Gi
+  # Injected by deploy-virt.sh (--set-file). Required when agentMode is virt.
+  sshPublicKey: ""
+  # Shared guest helpers from deploy/scripts/ and deploy/virtual-machines/
+  # (outside the Helm chart tree; reusable by other VM platforms).
+  guestSetupContent: ""
+  installNixContent: ""
+  packagesRpmContent: ""
+  packagesDebContent: ""
+  packagesPipContent: ""
+  # Map of cloud-init key -> user-data body. Keys match paths under
+  # deploy/virtual-machines/agents/ with "/" replaced by "-"
+  # (e.g. centos/9.stream -> centos-9.stream).
+  cloudInitContent: {}
+  # firmwareUUID: stable guest SMBIOS UUID (not cluster-specific). Pinning it keeps
+  # cloud-init from treating Helm upgrades/recreates as a new instance. Change the
+  # UUID only when you intentionally want cloud-init to re-run on existing disks.
+  agents:
+    - name: ceph-build-centos9-agent
+      cloudInit: centos-9.stream
+      firmwareUUID: "7b2e4c10-1a44-4d21-9c01-a10e00000012"
+      image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      cpu: 16
+      memory: 64Gi
+    - name: ceph-build-rocky10-agent
+      cloudInit: rocky-10
+      firmwareUUID: "7b2e4c10-1a44-4d21-9c01-a10e00000013"
+      image: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+      cpu: 16
+      memory: 64Gi
+    - name: ceph-build-ubuntu-noble-agent
+      cloudInit: ubuntu-noble
+      firmwareUUID: "7b2e4c10-1a44-4d21-9c01-a10e00000004"
+      image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+      cpu: 16
+      memory: 64Gi
+    - name: ceph-build-ubuntu-jammy-agent
+      cloudInit: ubuntu-jammy
+      firmwareUUID: "7b2e4c10-1a44-4d21-9c01-a10e00000005"
+      image: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      cpu: 16
+      memory: 64Gi
+
 serviceAccount:
   create: true
   name: ""

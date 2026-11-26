@@ -1,0 +1,16 @@
+#cloud-config
+hostname: ceph-build-ubuntu-noble-agent
+ssh_pwauth: true
+runcmd:
+  - |
+    bash <<'EOS'
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends \
+      __DEB_PACKAGES__
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    pip3 install --break-system-packages __PIP_PACKAGES__
+    __GUEST_SETUP__
+    EOS

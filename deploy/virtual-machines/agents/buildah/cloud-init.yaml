@@ -1,0 +1,18 @@
+#cloud-config
+hostname: ceph-build-buildah-agent
+ssh_pwauth: true
+# Fedora cloud guest plus the buildah Containerfile packages.
+# This is not the quay.io/buildah/stable container image.
+runcmd:
+  - |
+    bash <<'EOS'
+    set -euo pipefail
+    dnf install --allowerasing -y \
+      sudo \
+      openssh-server \
+      java-25-openjdk-devel \
+      buildah \
+      podman
+    dnf clean all
+    __GUEST_SETUP__
+    EOS

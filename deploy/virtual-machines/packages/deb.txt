@@ -1,0 +1,26 @@
+apt-utils \
+build-essential \
+ca-certificates \
+cmake \
+cpio \
+curl \
+debhelper \
+devscripts \
+dh-python \
+dpkg-dev \
+equivs \
+fakeroot \
+g++ \
+gcc \
+git \
+jq \
+lsb-release \
+make \
+openjdk-21-jdk-headless \
+openssh-server \
+python3-dev \
+python3-pip \
+python3-setuptools \
+reprepro \
+rsync \
+sudo
